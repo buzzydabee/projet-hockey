@@ -121,16 +121,19 @@ def calculate_standings(games, penalties):
         # Percentages
         s['PP%'] = round((s['PP_G'] / s['PP_Att'] * 100) if s['PP_Att'] > 0 else 0, 1)
         s['PK%'] = round((s['PK_Kills'] / s['PK_Att'] * 100) if s['PK_Att'] > 0 else 0, 1)
+        
+        # PTS/MJ
+        s['PTS/MJ'] = round((s['PTS'] / s['GP']) if s['GP'] > 0 else 0, 3)
+
         # Format string "A/B"
         s['PP'] = f"{s['PP_G']}/{s['PP_Att']}"
-        s['PK'] = f"{s['PK_Kills']}/{s['PK_Att']}"
         s['PK'] = f"{s['PK_Kills']}/{s['PK_Att']}"
         s['PIM'] = pim
         s['DIFF'] = s['GF'] - s['GA']
         
         stats.append(s)
         
-    cols_to_show = ['Team', 'PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'DIFF', 'PP%', 'PK%', 'PIM']
+    cols_to_show = ['Team', 'PTS/MJ', 'PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'DIFF', 'PP%', 'PK%', 'PIM']
     
     # Return empty if needed
     if not stats:
@@ -690,12 +693,15 @@ def main():
          standings.index += 1
     else:
          # Create empty with correct columns to avoid KeyError
-         standings = pd.DataFrame(columns=['Équipe', 'PTS', 'MJ', 'V', 'D', 'N', 'FJ', 'BP', 'BC', 'DIFF', '%AN', '%DN', 'PUN'])
+         standings = pd.DataFrame(columns=['Équipe', 'PTS/MJ', 'PTS', 'MJ', 'V', 'D', 'N', 'FJ', 'BP', 'BC', 'DIFF', '%AN', '%DN', 'PUN'])
 
-    cols_to_show = ['Équipe', 'PTS', 'MJ', 'V', 'D', 'N', 'FJ', 'BP', 'BC', 'DIFF', '%AN', '%DN', 'PUN']
+    cols_to_show = ['Équipe', 'PTS/MJ', 'PTS', 'MJ', 'V', 'D', 'N', 'FJ', 'BP', 'BC', 'DIFF', '%AN', '%DN', 'PUN']
     
-    if not standings.empty:
-        max_pts = max(standings['PTS'].max(), 10)
+    # Pts/MJ max is usually 2 (win) + maybe 1 fair play / 1 game = 3 max?
+    # Or standard W=2, T=1, FJ=1. Max per game = 3.
+    max_pmj = 3.0
+    if not standings.empty: 
+        max_pmj = max(standings['PTS/MJ'].max(), 3.0)
         
     # STYLING: Center all columns except Team
     # We use pandas Styler to enforce text-align: center
@@ -713,11 +719,15 @@ def main():
         styler_standings, 
         use_container_width=True,
         column_config={
-            "PTS": st.column_config.ProgressColumn(
-                "PTS",
-                format="%d",
+            "PTS/MJ": st.column_config.ProgressColumn(
+                "PTS/MJ",
+                format="%.3f",
                 min_value=0,
-                max_value=int(max_pts),
+                max_value=max_pmj,
+            ),
+             "PTS": st.column_config.NumberColumn(
+                "PTS",
+                format="%d"
             ),
             "%AN": st.column_config.NumberColumn(
                 "%AN",
