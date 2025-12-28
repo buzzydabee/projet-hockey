@@ -124,16 +124,58 @@ def calculate_standings(games, penalties):
         # Format string "A/B"
         s['PP'] = f"{s['PP_G']}/{s['PP_Att']}"
         s['PK'] = f"{s['PK_Kills']}/{s['PK_Att']}"
+        s['PK'] = f"{s['PK_Kills']}/{s['PK_Att']}"
         s['PIM'] = pim
+        s['DIFF'] = s['GF'] - s['GA']
         
         stats.append(s)
         
+    cols_to_show = ['Team', 'PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'DIFF', 'PP%', 'PK%', 'PIM']
+    
+    # Return empty if needed
+    if not stats:
+        return pd.DataFrame(columns=cols_to_show + ['PP', 'PK', 'PP_G', 'PP_Att', 'PK_Att', 'PK_Kills'])
+
     df = pd.DataFrame(stats)
     # Sort by PTS desc
     if not df.empty:
         df = df.sort_values(by=['PTS', 'W', 'GF'], ascending=False).reset_index(drop=True)
         df.index += 1
     return df
+
+# ... (main function context)
+
+    # --- STANDINGS ---
+    st.header("League Standings")
+    
+    if not selected_teams:
+        st.warning("Please select at least one team to view stats.")
+        cols_to_show = ['Team', 'PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'PP%', 'PK%', 'PIM']
+        st.dataframe(pd.DataFrame(columns=cols_to_show), use_container_width=True)
+    else:
+        # Filter for Standings based on SELECTED TEAMS
+        # Logic: Show standings for games involving ANY of the selected teams.
+        standings_games = games
+        standings_penalties = penalties
+        
+        # Only filter if we haven't selected ALL teams (optimization)
+        if len(selected_teams) < len(all_teams):
+            # Keep games where Home OR Visitor is in the selection
+            standings_games = games[games['home'].isin(selected_teams) | games['visitor'].isin(selected_teams)]
+            s_ids = standings_games['game_id'].unique()
+            standings_penalties = penalties[penalties['game_id'].isin(s_ids)]
+            
+        standings = calculate_standings(standings_games, standings_penalties)
+        
+        # If we selected specific teams, we probably only want to SEE those teams in the table?
+        # Or do we want to see their opponents too?
+        # Usually "Filter by Team" implies "Show me rows for these teams".
+        # Let's filter the FINAL standings dataframe to only show selected teams rows.
+        if not standings.empty:
+             standings = standings[standings['Team'].isin(selected_teams)]
+    
+        cols_to_show = ['Team', 'PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'PP%', 'PK%', 'PIM']  # Simplified view
+        st.dataframe(standings[cols_to_show], use_container_width=True)
 
 def parse_time_to_seconds(period, time_str):
     try:
@@ -177,7 +219,7 @@ def calculate_player_stats(games, goals, penalties, players):
         if key not in p_stats:
             p_stats[key] = {
                 'Name': name, 'Team': team_name, 'MJ': set(),
-                'B': 0, 'A': 0, 'PTS': 0, 'PEM': 0,
+                'B': 0, 'A': 0, 'PTS': 0, 'PEM': 0, 'PUN': 0,
                 'BAN': 0, 'AAN': 0, 'PTS_AN': 0,
                 'BIN': 0, 'AID': 0, 'PTS_IN': 0,
                 'BG': 0, 'BE': 0
@@ -283,6 +325,7 @@ def calculate_player_stats(games, goals, penalties, players):
              try: mins = int(pen['duration'].split(':')[0])
              except: mins = 0
              p_stats[k]['PEM'] += mins
+             p_stats[k]['PUN'] += 1
              p_stats[k]['MJ'].add(pen['game_id'])
 
     # Finalize
@@ -376,6 +419,24 @@ def calculate_goalie_stats(conn, filtered_game_ids=None):
         
     return pd.DataFrame(finals)
 
+# Divisions Map (To be populated)
+DIVISIONS = {
+    "Division Est": [
+        "AIGLES CBIO", "WAPITIS CHARLESBOURG", "BÉLIERS QUÉBEC-CENTRE", 
+        "RADISSON QUÉBEC-CENTRE", "BOUCS QUÉBEC-CENTRE", "ÉPERVIERS BEAUPORT", 
+        "CARIBOUS CHARLESBOURG", "BUCKS CHARLESBOURG", "PHÉNIX CBIO", 
+        "FAUCONS BEAUPORT", "FAUCONS", # Handling variations
+        "RICHELIEU QUÉBEC-CENTRE", "RICHELIEU", 
+        "PATRIOTES QUÉBEC-CENTRE", "PATRIOTES  QUÉBEC-CENTRE" # Double space variation
+    ], 
+    "Division Ouest": [
+        "ROYAUX 1 CRSA", "GOUVERNEURS 2 SFSAL", "DIABLOS DPR 1", "DIABLOS DPR",
+        "GOUVERNEURS 3 SFSAL", "DIABLOS DPR 2", "LYNX SAINT-RAYMOND 1", "LYNX SAINT-RAYMOND",
+        "GOUVERNEURS 4 SFSAL", "LYNX SAINT-RAYMOND 2", "CHEVALIERS 1 VBVC", 
+        "GOUVERNEURS 1 SFSAL", "ROYAUX 2 CRSA", "CHEVALIERS 2 VBVC"
+    ]
+}
+
 def main():
     st.title("🏒 Hockey Stats Dashboard")
     
@@ -405,20 +466,42 @@ def main():
         max_date = datetime.now().date()
 
     # --- SIDEBAR FILTERS ---
-    st.sidebar.header("Filters")
+    st.sidebar.header("Filtres")
     
-    # 1. Team Filter
+    # 1. Team Selection
     all_teams = sorted(list(set(games['home']) | set(games['visitor'])))
-    selected_team = st.sidebar.selectbox("Select Team", ["All Teams"] + all_teams)
     
+    filter_mode = st.sidebar.radio("Mode de Sélection", ["Toutes les équipes", "Par Division", "Sélection Personnalisée"])
+    
+    selected_teams = []
+    
+    if filter_mode == "Toutes les équipes":
+        selected_teams = all_teams
+        st.sidebar.info(f"Affichage de {len(all_teams)} équipes")
+        
+    elif filter_mode == "Par Division":
+        div = st.sidebar.selectbox("Choisir la Division", list(DIVISIONS.keys()))
+        if div:
+            selected_teams = [t for t in DIVISIONS[div] if t in all_teams]
+            if not selected_teams:
+                st.sidebar.warning(f"Aucune équipe trouvée pour {div}")
+            else:
+                st.sidebar.success(f"{len(selected_teams)} équipes dans {div}")
+                
+    elif filter_mode == "Sélection Personnalisée":
+        selected_teams = st.sidebar.multiselect("Choisir les Équipes", all_teams, default=all_teams[:1])
+    
+    
+    # --- STATS MODE ---
+    stats_mode = st.sidebar.radio("Mode de Calcul", ["Stats Globales", "Face-à-Face"])
+
     # 2. Date Filter
     st.sidebar.divider()
-    st.sidebar.subheader("Date Range")
+    st.sidebar.subheader("Période")
     
     # Defaults to full range
-    # Defaults to full range
     start_date, end_date = st.sidebar.slider(
-        "Select Date Range",
+        "Choisir la plage de dates",
         min_value=min_date,
         max_value=max_date,
         value=(min_date, max_date),
@@ -426,145 +509,279 @@ def main():
     )
     
     # --- FILTER DATA ---
-    # Filter Games
+    # Filter Games by Date
     mask_date = (games['date_dt'].dt.date >= start_date) & (games['date_dt'].dt.date <= end_date)
     games = games[mask_date]
+    
+    
+    if stats_mode == "Face-à-Face":
+        if len(selected_teams) < 2:
+            st.warning("Le mode Face-à-Face requiert au moins 2 équipes sélectionnées.")
+            # Fallback to empty to avoid confusion or show nothing
+            games = pd.DataFrame(columns=games.columns)
+        else:
+            # Keep games where BOTH teams are in selection
+            games = games[games['home'].isin(selected_teams) & games['visitor'].isin(selected_teams)]
+    
     valid_game_ids = games['game_id'].unique()
     
-    # Filter Related Tables
+    # Filter Related Tables by Date
     goals = goals[goals['game_id'].isin(valid_game_ids)]
     penalties = penalties[penalties['game_id'].isin(valid_game_ids)]
     
-    # 3. Player Filter (for Advanced Player Stats)
-    st.sidebar.divider()
+    # 3. Player Filter (for Advanced Player Stats) - Moved down after Team Filter logic if needed? 
+    # Actually we need filtered player list primarily for the multiselect widget which is below.
     
     # --- DATA MANAGEMENT ---
-    st.sidebar.header("Data Management")
-    if st.sidebar.button("Check for Missing Games"):
-        with st.spinner("Checking website for new games... (Browser may open)"):
+    st.sidebar.header("Gestion des Données")
+    if st.sidebar.button("Vérifier nouveaux matchs"):
+        with st.spinner("Vérification en cours... (Le navigateur peut s'ouvrir)"):
             import subprocess
             try:
                 # Run Download
                 result_dl = subprocess.run(["python", "download_game_sheets.py"], capture_output=True, text=True)
-                st.sidebar.success("Download check complete.")
+                st.sidebar.success("Vérification terminée.")
                 if result_dl.stdout:
-                    with st.sidebar.expander("Download Log"):
+                    with st.sidebar.expander("Journal de téléchargement"):
                         st.text(result_dl.stdout)
                 
                 # Run Process
-                with st.spinner("Processing new files..."):
+                with st.spinner("Traitement des nouveaux fichiers..."):
                     result_proc = subprocess.run(["python", "process_gamesheets.py"], capture_output=True, text=True)
-                    st.sidebar.success("Database updated.")
+                    st.sidebar.success("Base de données mise à jour.")
                     if result_proc.stdout:
-                         with st.sidebar.expander("Processing Log"):
+                         with st.sidebar.expander("Journal de traitement"):
                              st.text(result_proc.stdout)
                              
                 st.rerun()
             except Exception as e:
-                st.sidebar.error(f"Error: {e}")
+                st.sidebar.error(f"Erreur: {e}")
 
-    if st.sidebar.button("Rebuild Database (Local PDFs Only)"):
-        with st.spinner("Rebuilding database from local files..."):
+    if st.sidebar.button("Reconstruire la BD (Local)"):
+        with st.spinner("Reconstruction de la base de données..."):
             import subprocess
             try:
                 # Run Process Script Only (It deletes DB first)
                 result_rebuild = subprocess.run(["python", "process_gamesheets.py"], capture_output=True, text=True)
-                st.sidebar.success("Database Rebuilt!")
+                st.sidebar.success("Base de données reconstruite!")
                 if result_rebuild.stdout:
-                    with st.sidebar.expander("Rebuild Log"):
+                    with st.sidebar.expander("Journal de reconstruction"):
                         st.text(result_rebuild.stdout)
                 st.rerun()
             except Exception as e:
-                st.sidebar.error(f"Error rebuilding: {e}")
+                st.sidebar.error(f"Erreur de reconstruction: {e}")
     
     # --- STANDINGS ---
-    st.header("League Standings")
-    standings = calculate_standings(games, penalties)
+    st.header("Classement Général")
+    with st.expander("Voir la légende"):
+         l1, l2, l3 = st.columns(3)
+         with l1:
+             st.markdown("""<div style="font-size: 13px; line-height: 1.4;">
+             <strong>Général</strong><br>
+             <b>MJ</b>: Matchs joués<br>
+             <b>V</b>: Victoires<br>
+             <b>D</b>: Défaites<br>
+             <b>N</b>: Nulles<br>
+             <b>PTS</b>: Points
+             </div>""", unsafe_allow_html=True)
+         with l2:
+             st.markdown("""<div style="font-size: 13px; line-height: 1.4;">
+             <strong>Buts</strong><br>
+             <b>BP</b>: Buts pour<br>
+             <b>BC</b>: Buts contre<br>
+             <b>DIFF</b>: Différentiel<br>
+             <b>FJ</b>: Franc-jeu
+             </div>""", unsafe_allow_html=True)
+         with l3:
+             st.markdown("""<div style="font-size: 13px; line-height: 1.4;">
+             <strong>Spécial</strong><br>
+             <b>%AN</b>: % Avantage num.<br>
+             <b>%DN</b>: % Désavantage num.<br>
+             <b>PUN</b>: Punitions (min)
+             </div>""", unsafe_allow_html=True)
     
-    cols_to_show = ['Team', 'PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'PP%', 'PK%', 'PIM']  # Simplified view
+    # Filter for Standings based on SELECTED TEAMS
+    # Logic: Show standings for games involving ANY of the selected teams.
+    standings_games = games
+    standings_penalties = penalties
+    
+    # Only filter if we haven't selected ALL teams (optimization)
+    if len(selected_teams) < len(all_teams):
+        # Keep games where Home OR Visitor is in the selection
+        standings_games = games[games['home'].isin(selected_teams) | games['visitor'].isin(selected_teams)]
+        s_ids = standings_games['game_id'].unique()
+        standings_penalties = penalties[penalties['game_id'].isin(s_ids)]
+        
+    standings = calculate_standings(standings_games, standings_penalties)
+    
+    # If we selected specific teams, we probably only want to SEE those teams in the table?
+    # Or do we want to see their opponents too?
+    # Usually "Filter by Team" implies "Show me rows for these teams".
+    # Let's filter the FINAL standings dataframe to only show selected teams rows.
+    if not standings.empty:
+         standings = standings[standings['Team'].isin(selected_teams)]
+         standings = standings.reset_index(drop=True)
+         standings.index += 1
+         
+         # RENAME COLUMNS FOR DISPLAY
+         standings = standings.rename(columns={
+             'Team': 'Équipe', 'GP': 'MJ', 'W': 'V', 'L': 'D', 'T': 'N',
+             'GF': 'BP', 'GA': 'BC', 'PP%': '%AN', 'PK%': '%DN', 'PIM': 'PUN'
+         })
+         
+         # Enforce Sort explicitly on the view
+         standings = standings.sort_values(by=['PTS', 'V', 'DIFF', 'BP'], ascending=False).reset_index(drop=True)
+         standings.index += 1
+    else:
+         # Create empty with correct columns to avoid KeyError
+         standings = pd.DataFrame(columns=['Équipe', 'PTS', 'MJ', 'V', 'D', 'N', 'FJ', 'BP', 'BC', 'DIFF', '%AN', '%DN', 'PUN'])
+
+    cols_to_show = ['Équipe', 'PTS', 'MJ', 'V', 'D', 'N', 'FJ', 'BP', 'BC', 'DIFF', '%AN', '%DN', 'PUN']
     st.dataframe(standings[cols_to_show], use_container_width=True)
     
     # --- GOALIE STATS ---
-    st.header("Goalie Stats")
+    st.header("Statistiques Gardiens")
+    with st.expander("Voir la légende"):
+        g1, g2 = st.columns(2)
+        with g1:
+            st.markdown("""<div style="font-size: 13px; line-height: 1.4;">
+            <b>MJ</b>: Matchs joués<br>
+            <b>MA</b>: Matchs amorcés<br>
+            <b>V</b>: Victoires<br>
+            <b>D</b>: Défaites<br>
+            <b>V</b>: Victoires<br>
+            <b>D</b>: Défaites<br>
+            <b>N</b>: Nulles<br>
+            </div>""", unsafe_allow_html=True)
+        with g2:
+            st.markdown("""<div style="font-size: 13px; line-height: 1.4;">
+            <b>BC</b>: Buts contre<br>
+            <b>Lancers</b>: Tirs contre (TC)<br>
+            <b>%Arr</b>: % d'arrêts<br>
+            <b>Moy</b>: Moyenne (GAA)<br>
+            <b>BL</b>: Blanchissages<br>
+            <b>TG</b>: Temps de glace
+            </div>""", unsafe_allow_html=True)
     gdf = calculate_goalie_stats(conn, valid_game_ids)
-    if selected_team != "All Teams":
-        gdf = gdf[gdf['Team'] == selected_team]
+    
+    # Filter Goalies by Team Selection
+    if not gdf.empty:
+        gdf = gdf[gdf['Team'].isin(selected_teams)]
     
     if not gdf.empty:
         gdf = gdf.sort_values(by=['Moy', 'MJ'], ascending=[True, False]).reset_index(drop=True)
         gdf.index += 1
-        cols = ['Name', 'Team', 'MJ', 'V', 'D', 'N', 'BL', 'BC', 'Shots', 'Moy', '%Arr', 'TG_str']
+        
+        # Rename Cols
+        gdf = gdf.rename(columns={'Name': 'Nom', 'Team': 'Équipe', 'Shots': 'Lancers'})
+        
+        cols = ['Nom', 'Équipe', 'MJ', 'MA', 'V', 'D', 'N', 'BL', 'BC', 'Lancers', 'Moy', '%Arr', 'TG_str']
         st.dataframe(gdf[cols], use_container_width=True)
     else:
-        st.info("No goalie stats available (or no games parsed for this team)")
+        st.info("No goalie stats available for selected selection.")
         
     conn.close()
 
     # --- ADVANCED PLAYER STATS ---
-    st.header("Advanced Player Stats")
+    st.header("Statistiques Joueurs")
+    with st.expander("Voir la légende"):
+        p1, p2 = st.columns(2)
+        with p1:
+            st.markdown("""<div style="font-size: 13px; line-height: 1.4;">
+            <strong>Offensif</strong><br>
+            <b>MJ</b>: Matchs joués<br>
+            <b>B</b>: Buts<br>
+            <b>A</b>: Aides<br>
+            <b>PTS</b>: Points (PTS/MJ: par match)<br>
+            <b>PEM</b>: Min. Punition (PUN: Nbr)
+            </div>""", unsafe_allow_html=True)
+        with p2:
+            st.markdown("""<div style="font-size: 13px; line-height: 1.4;">
+            <strong>Situationnel</strong><br>
+            <b>BAN/AAN</b>: Buts/Aides (AV)<br>
+            <b>PTS AN</b>: Points (AV)<br>
+            <b>BIN/AID</b>: Buts/Aides (DN)<br>
+            <b>PTS IN</b>: Points (DN)<br>
+            <b>BG/BE</b>: But Gagnant/Égalisateur
+            </div>""", unsafe_allow_html=True)
     # Calculate for ALL (expensive?) or filtered?
     p_df = calculate_player_stats(games, goals, penalties, players)
     
-    if selected_team != "All Teams":
-        p_df = p_df[p_df['Team'] == selected_team]
-        
-    # Player Filter Widget
-    # Now that p_df is calculated (based on filtered dates), we can list players.
-    all_player_names = sorted(p_df['Name'].unique())
-    selected_players = st.sidebar.multiselect("Filter Players", all_player_names)
+    # Filter Players by Team Selection
+    if not p_df.empty:
+        p_df = p_df[p_df['Team'].isin(selected_teams)]
     
-    if selected_players:
-        p_df = p_df[p_df['Name'].isin(selected_players)]
+    # Player Filter Widget (specific names)
+    if not p_df.empty:
+        all_player_names = sorted(p_df['Name'].unique())
+        specific_players = st.sidebar.multiselect("Filtrer par Joueur", all_player_names)
+        
+        if specific_players:
+            p_df = p_df[p_df['Name'].isin(specific_players)]
         
     # Sort by PTS
     if not p_df.empty:
         p_df = p_df.sort_values(by=['PTS', 'B', 'MJ'], ascending=False).reset_index(drop=True)
         p_df.index += 1
         
+        # Rename Cols
+        p_df = p_df.rename(columns={'Name': 'Nom', 'Team': 'Équipe'})
+        
         # Reorder columns to match request roughly: MJ B A PTS PEM BAN AAN PTS_AN BIN AID PTS_IN BG BE
-        cols = ['Name', 'Team', 'MJ', 'B', 'A', 'PTS', 'PEM', 'PEM/MJ', 'PTS/MJ', 
+        # Reorder columns to match request roughly: MJ B A PTS PEM BAN AAN PTS_AN BIN AID PTS_IN BG BE
+        cols = ['Nom', 'Équipe', 'MJ', 'B', 'A', 'PTS', 'PEM', 'PUN', 'PEM/MJ', 'PTS/MJ', 
                 'BAN', 'AAN', 'PTS_AN', 'BIN', 'AID', 'PTS_IN', 'BG', 'BE']
         st.dataframe(p_df[cols], use_container_width=True)
     else:
-        st.info("No player stats found.")
+        st.info("Aucune statistique de joueur trouvée.")
 
 
-    # --- TEAM METRICS ---
-    if selected_team != "All Teams":
+    # --- TEAM METRICS (Single Team Only) ---
+    # Only show detailed breakdown if EXACTLY ONE team is selected
+    if len(selected_teams) == 1:
+        selected_team = selected_teams[0]
         st.divider()
-        st.header(f"Team: {selected_team}")
+        st.header(f"Analyse d'Équipe : {selected_team}")
         
         # Filter Data
         games_filtered = games[(games['home'] == selected_team) | (games['visitor'] == selected_team)]
         goals_filtered = goals[goals['team_name'] == selected_team]
         penalties_filtered = penalties[penalties['team_name'] == selected_team]
         
-        team_row = standings[standings['Team'] == selected_team].iloc[0]
+        # Get standing row
+        # Note: 'standings' DF now has French columns if calculated above.
+        # But we must be careful. Variable 'standings' exists from previous block.
+        # It has column 'Équipe' now, not 'Team'.
         
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Points", team_row['PTS'])
-        c2.metric("Record (W-L-T)", f"{team_row['W']}-{team_row['L']}-{team_row['T']}")
-        c3.metric("Goals For", team_row['GF'])
-        c4.metric("Goals Against", team_row['GA'])
-        
-        c5, c6, c7, c8 = st.columns(4)
-        c5.metric("PP %", f"{team_row['PP%']}% ({team_row['PP']})")
-        c6.metric("PK %", f"{team_row['PK%']}% ({team_row['PK']})")
-        c7.metric("Avg PIM/Game", round(team_row['PIM'] / team_row['GP'], 1) if team_row['GP'] else 0) 
- 
-        c8.metric("Fair Play Pts", team_row['FJ'])
-        
+        # Let's re-find the row using FRENCH column names
+        t_row = standings[standings['Équipe'] == selected_team]
+        if not t_row.empty:
+            team_row = t_row.iloc[0]
+            
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Points", team_row['PTS'])
+            c2.metric("Fiche (V-D-N)", f"{team_row['V']}-{team_row['D']}-{team_row['N']}")
+            c3.metric("Buts Pour", team_row['BP'])
+            c4.metric("Buts Contre", team_row['BC'])
+            
+            c5, c6, c7, c8 = st.columns(4)
+            c5.metric("% AN", f"{team_row['%AN']}%")
+            c6.metric("% DN", f"{team_row['%DN']}%")
+            c7.metric("Punitions/Match", round(team_row['PUN'] / team_row['MJ'], 1) if team_row['MJ'] else 0) 
+    
+            c8.metric("Points Franc-Jeu", team_row['FJ'])
+            
         # TABS
-        tab1, tab2, tab3 = st.tabs(["Game Log", "Penalties", "Raw Goals"])
+        tab1, tab2, tab3 = st.tabs(["Journal de Match", "Punitions", "Buts (Brut)"])
         
         with tab1:
-            st.subheader("Game Log")
+            st.subheader("Journal de Match")
             # Show relevant columns
             log_cols = ['date', 'home', 'visitor', 'final_score_home', 'final_score_visitor', 'arena']
             st.dataframe(games_filtered[log_cols].sort_values(by='date', ascending=False), use_container_width=True)
 
         with tab2:
-            st.subheader("Penalties")
+            st.subheader("Punitions")
             st.dataframe(penalties_filtered, use_container_width=True)
             
         with tab3:
