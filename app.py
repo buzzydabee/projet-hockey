@@ -619,6 +619,17 @@ def main():
             except Exception as e:
                 st.sidebar.error(f"Erreur de reconstruction: {e}")
     
+    # --- VIEWS ---
+    view = st.sidebar.radio("Vue", ["Tableau de bord", "Évolution"], index=0)
+
+    if view == "Tableau de bord":
+        render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, players)
+    else:
+        render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, players)
+        
+    conn.close()
+
+def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, players):
     # --- STANDINGS ---
     # Custom Toggle to keep Button on Right BUT Content Full Width
     if 'leg_standings' not in st.session_state: st.session_state.leg_standings = False
@@ -766,7 +777,9 @@ def main():
                 <b>BL</b>: Blanchissages, <b>TG</b>: Temps de glace
                 </div>""", unsafe_allow_html=True)
             st.markdown("---")
-            
+    
+    # Calculate for filtered game IDs
+    valid_game_ids = games['game_id'].unique()
     gdf = calculate_goalie_stats(conn, valid_game_ids)
     
     # Filter Goalies by Team Selection
@@ -811,7 +824,6 @@ def main():
     else:
         st.info("No goalie stats available for selected selection.")
         
-    conn.close()
 
     # --- ADVANCED PLAYER STATS ---
     if 'leg_players' not in st.session_state: st.session_state.leg_players = False
@@ -959,6 +971,342 @@ def main():
             
         with tab3:
              st.dataframe(goals_filtered)
+
+def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, players):
+    st.header("📈 Évolution de la Saison")
+    st.caption("Les indicateurs sont calculés sur 4 périodes de durée égale, basées sur la plage de dates sélectionnée.")
+
+    # 1. Split Time Range into 4 Periods
+    if games.empty:
+        st.warning("Aucun match dans la plage sélectionnée.")
+        return
+
+    min_date = games['date_dt'].min()
+    max_date = games['date_dt'].max()
+    
+    # If range is too small (e.g. 1 day), just show 1 period? 
+    # Or force 4 periods even if identical? Let's try to split by duration.
+    total_duration = max_date - min_date
+    period_duration = total_duration / 4
+    
+    periods = []
+    for i in range(4):
+        p_start = min_date + (period_duration * i)
+        p_end = min_date + (period_duration * (i + 1))
+        # Ensure last period catches everything up to max_date exactly (microseconds issue)
+        if i == 3: p_end = max_date 
+        
+        periods.append((p_start, p_end))
+        
+    # 2. Calculate Stats for each Period
+    # We will store results in dictionaries: Team -> {Col: [v1, v2, v3, v4]}
+    
+    # Init aggregators
+    # Standings
+    agg_standings = {} # Key: TeamName -> {Col: []}
+    
+    # Goalies
+    agg_goalies = {} # Key: Name -> {Col: []}
+    
+    # Players
+    agg_players = {} # Key: Name -> {Col: []}
+    
+    # We need a master list of all entities to ensure alignment
+    # But entities might not participate in all periods. 
+    # We'll collect all observed entities across all periods first? 
+    # Or just iterate and fill missing later?
+    # Let's use the current 'games' filter (which is the whole range) to define the Universe of entities.
+    
+    # Universe Standings
+    # Note: calculate_standings returns "Équipe" named 'Team' initially.
+    # We should normalize column names to what we want to display/graph.
+    cols_std_numeric = ['PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA']
+    # Computed later: DIFF, PP%, PK%, PIM (from raw data?)
+    # Re-calculating complex stats (PP%) from averages of averages is wrong.
+    # We must calculate PP% for the period, then store that value.
+    # So we prefer to store the FINISHED stat value for the period.
+    
+    cols_std_to_track = ['PTS', 'PTS/MJ', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'DIFF', 'PP%', 'PK%', 'PIM']
+    # Mapping to French for Display
+    std_map = {
+        'Team': 'Équipe', 'GP': 'MJ', 'W': 'V', 'L': 'D', 'T': 'N',
+        'GF': 'BP', 'GA': 'BC', 'PP%': '%AN', 'PK%': '%DN', 'PIM': 'PUN'
+    }
+    
+    
+    for i, (p_start, p_end) in enumerate(periods):
+        # Filter Data for Period
+        # Inclusive start, inclusive end? 
+        # Overlap risk at boundaries? 
+        # Let's say: >= start AND <= end. 
+        # But Period 0 end == Period 1 start.
+        # Use: >= start AND < end (except last period <= end)
+        if i < 3:
+            mask = (games['date_dt'] >= p_start) & (games['date_dt'] < p_end)
+        else:
+            mask = (games['date_dt'] >= p_start) & (games['date_dt'] <= p_end)
+            
+        p_games = games[mask]
+        p_ids = p_games['game_id'].unique()
+        p_goals = goals[goals['game_id'].isin(p_ids)]
+        p_penalties = penalties[penalties['game_id'].isin(p_ids)]
+        
+        # --- CALC STANDINGS ---
+        s_games = p_games
+        s_pens = p_penalties
+        # Apply Selection Filter if needed (Global vs 1vsAll)
+        if stats_mode != "Un contre tous" and not p_games.empty:
+             # Standard: only games involving selected teams (if Custom/Div mode)
+             # But 'games' acts as the base. If user filtered teams in sidebar, 'games' passed here 
+             # is ALREADY filtered by Team for Global/Face-to-Face?
+             # Wait, in main(), for "Global" games is NOT filtered by team, only by Date.
+             # Filtering happens inside calculate_standings wrapper in Dashboard.
+             
+             # Replicate Logic:
+             # Replicate Logic:
+             # Always filter to reduce processing set if not Un contre tous
+             s_games = p_games[p_games['home'].isin(selected_teams) | p_games['visitor'].isin(selected_teams)]
+             s_ids = s_games['game_id'].unique()
+             s_pens = p_penalties[p_penalties['game_id'].isin(s_ids)]
+                 
+        start_time = datetime.now()
+        df_std = calculate_standings(s_games, s_pens)
+        
+        # Add PTS/MJ
+        if not df_std.empty:
+            df_std['PTS/MJ'] = round((df_std['PTS'] / df_std['GP']), 3) # GP > 0 implied by logic usually? or check
+            df_std['PTS/MJ'] = df_std.apply(lambda r: round(r['PTS']/r['GP'], 3) if r['GP']>0 else 0, axis=1)
+        
+        # Filter rows to selected teams only
+        if not df_std.empty:
+            if stats_mode != "Un contre tous":
+                df_std = df_std[df_std['Team'].isin(selected_teams)]
+        
+        # Merge into Aggregator
+        for _, row in df_std.iterrows():
+            t = row['Team']
+            if t not in agg_standings: agg_standings[t] = {c: [0.0]*4 for c in cols_std_to_track}
+            
+            for c in cols_std_to_track:
+                val = row.get(c, 0)
+                # Ensure numeric
+                try: val = float(val)
+                except: val = 0.0
+                agg_standings[t][c][i] = val
+                
+        # --- CALC GOALIES ---
+        g_ids = s_games['game_id'].unique()
+        df_goal = calculate_goalie_stats(conn, g_ids)
+        if not df_goal.empty:
+            if stats_mode != "Un contre tous":
+               df_goal = df_goal[df_goal['Team'].isin(selected_teams)]
+               
+        cols_goal_track = ['MJ', 'MA', 'V', 'D', 'N', 'BL', 'BC', 'Shots', 'Moy', '%Arr']
+        
+        for _, row in df_goal.iterrows():
+             name = row['Name']
+             # Key = Name (Unique enough?)
+             if name not in agg_goalies: 
+                 agg_goalies[name] = {
+                     'Team': row['Team'], # Static
+                     'Stats': {c: [0.0]*4 for c in cols_goal_track}
+                 }
+                 
+             for c in cols_goal_track:
+                 val = row.get(c, 0)
+                 try: val = float(val)
+                 except: val = 0.0
+                 agg_goalies[name]['Stats'][c][i] = val
+
+        # --- CALC PLAYERS ---
+        # This might be slow... 4x calculation
+        df_play = calculate_player_stats(s_games, p_goals, p_penalties, players)
+        if not df_play.empty:
+            if stats_mode != "Un contre tous":
+                df_play = df_play[df_play['Team'].isin(selected_teams)]
+        
+        # Filter by specific players widget? 
+        # (Technically that widget is in render_dashboard, so it's not visible here!
+        #  We should arguably move specific_players filter to main() or replicate it here if we want consistency.
+        #  For now, show all selected team players.)
+        
+        cols_play_track = ['MJ', 'B', 'A', 'PTS', 'PEM', 'PUN', 'PEM/MJ', 'PTS/MJ', 
+                           'BAN', 'AAN', 'PTS_AN', 'BIN', 'AID', 'PTS_IN', 'BG', 'BE']
+                           
+        for _, row in df_play.iterrows():
+             name = row['Name']
+             if name not in agg_players:
+                 agg_players[name] = {
+                     'Team': row['Team_name'] if 'Team_name' in row else row.get('Team', ''),
+                     'Stats': {c: [0.0]*4 for c in cols_play_track}
+                 }
+             for c in cols_play_track:
+                 val = row.get(c, 0)
+                 try: val = float(val)
+                 except: val = 0.0
+                 agg_players[name]['Stats'][c][i] = val
+
+    # 3. BUILD AND DISPLAY TABLES
+    
+    # helper to generate safe line chart config
+    def get_safe_chart_config(df, col_name, title):
+        # Default fallback (safe for all 0s or empty)
+        base_min = 0
+        base_max = 1
+        
+        try:
+            # Flatten and filter for valid numbers
+            all_values = []
+            for sublist in df[col_name]:
+                if isinstance(sublist, (list, tuple)):
+                    for v in sublist:
+                        try:
+                            f = float(v)
+                            # Check for NaN or Inf
+                            if f == f and f != float('inf') and f != float('-inf'):
+                                all_values.append(f)
+                        except: pass
+            
+            if not all_values:
+                # No valid data
+                return st.column_config.LineChartColumn(title, width="small", y_min=base_min, y_max=base_max)
+            
+            mn = min(all_values)
+            mx = max(all_values)
+            
+            y_min = None
+            y_max = None
+            
+            # 1. Flat Data or extremely small range
+            if abs(mx - mn) < 1e-9:
+                if abs(mn) < 1e-9: # Both ~0
+                    y_min = 0
+                    y_max = 1
+                else:
+                    y_min = mn - 0.5
+                    y_max = mx + 0.5
+            else:
+                # 2. Variation
+                if mn >= 0:
+                    y_min = 0
+                    y_max = None
+                else:
+                    y_min = None
+                    y_max = None
+                    
+            return st.column_config.LineChartColumn(
+                title, 
+                y_min=y_min,
+                y_max=y_max, 
+                width="small"
+            )
+
+        except Exception:
+            # Fallback for any unexpected error
+            return st.column_config.LineChartColumn(title, width="small", y_min=base_min, y_max=base_max)
+
+    # helper
+    def make_spark_df(agg_data, col_map, scalar_cols=None):
+        # agg_data: {Entity: {Col: [v1..v4]}} (Standings style) OR {Entity: {'Team': T, 'Stats': {Col: []}}} (Player style)
+        rows = []
+        for entity, data in agg_data.items():
+            row = {}
+            row[col_map.get('Team', 'Équipe') if 'Team' in col_map else 'Nom'] = entity
+            
+            # Handle Structure diff
+            if 'Stats' in data: # Player/Goalie
+                stats = data['Stats']
+                if 'Team' in data: row['Équipe'] = data['Team']
+            else: # Standings
+                stats = data
+                
+            for c, vals in stats.items():
+                disp_col = col_map.get(c, c)
+                row[disp_col] = vals
+                
+            # Add Scalar Total/Avg if needed for sorting?
+            # User wants to SEE sparklines. But usually we sort by Total.
+            # Let's calculate a "Total" or "Current" for sorting purposes?
+            # Or just sort by the last value? Or sum?
+            # Let's simple sum the array for sorting for countable things, avg for ratios.
+            # For simplicity, we won't add extra sort columns unless requested, 
+            # we just rely on the name or let it be. 
+            # Actually, without a single number, sorting is hard in Streamlit DF.
+            # We will rely on default index sorting (Alphabetical) or pre-sort.
+            
+            rows.append(row)
+        return pd.DataFrame(rows)
+
+    # --- STANDINGS TABLE ---
+    if agg_standings:
+        st.subheader("Classement")
+        df_evo_std = make_spark_df(agg_standings, std_map)
+        
+        # Sort? by PTS sum?
+        # Let's add a hidden total for sorting
+        df_evo_std['__SortPTS'] = df_evo_std['PTS'].apply(sum)
+        df_evo_std['__SortPTSMJ'] = df_evo_std['PTS/MJ'].apply(lambda x: sum(x)/4) # Average of Avg
+        
+        df_evo_std = df_evo_std.sort_values(by=['__SortPTS', '__SortPTSMJ'], ascending=False)
+        
+        # Config
+        # All columns except Equipe are sparklines
+        # We need to act on French Names
+        cols_cfg = {}
+        for c in cols_std_to_track:
+            fr_c = std_map.get(c, c)
+            cols_cfg[fr_c] = get_safe_chart_config(df_evo_std, fr_c, fr_c)
+            
+        st.dataframe(
+            df_evo_std.drop(columns=['__SortPTS', '__SortPTSMJ']),
+            column_config=cols_cfg,
+            use_container_width=True
+        )
+    else:
+        st.info("Pas de données de classement.")
+
+    # --- GOALIES ---
+    if agg_goalies:
+        st.subheader("Gardiens")
+        g_map = {'Shots': 'Lancers', 'Name': 'Nom', 'Team': 'Équipe'}
+        df_evo_g = make_spark_df(agg_goalies, g_map)
+        
+        # Sort
+        # Sort by MJ sum?
+        df_evo_g['__MJ'] = df_evo_g['MJ'].apply(sum)
+        df_evo_g = df_evo_g.sort_values(by='__MJ', ascending=False)
+
+        cols_cfg_g = {}
+        for c in cols_goal_track:
+            fr_c = g_map.get(c, c)
+            cols_cfg_g[fr_c] = get_safe_chart_config(df_evo_g, fr_c, fr_c)
+        
+        st.dataframe(
+            df_evo_g.drop(columns=['__MJ']), 
+            column_config=cols_cfg_g,
+            use_container_width=True
+        )
+
+    # --- PLAYERS ---
+    if agg_players:
+        st.subheader("Joueurs")
+        p_map = {'Name': 'Nom', 'Team': 'Équipe'}
+        df_evo_p = make_spark_df(agg_players, p_map)
+        
+        # Sort by PTS sum
+        df_evo_p['__PTS'] = df_evo_p['PTS'].apply(sum)
+        df_evo_p = df_evo_p.sort_values(by='__PTS', ascending=False)
+        
+        cols_cfg_p = {}
+        for c in cols_play_track:
+             fr_c = p_map.get(c, c)
+             cols_cfg_p[fr_c] = get_safe_chart_config(df_evo_p, fr_c, fr_c)
+        
+        st.dataframe(
+            df_evo_p.drop(columns=['__PTS']).head(100), # Limit to top 100 to avoid lag
+            column_config=cols_cfg_p,
+            use_container_width=True
+        )
 
 if __name__ == "__main__":
     main()
