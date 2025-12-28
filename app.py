@@ -1150,59 +1150,57 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
     
     # helper to generate safe line chart config
     def get_safe_chart_config(df, col_name, title):
-        # Default fallback (safe for all 0s or empty)
-        base_min = 0
-        base_max = 1
+        # Default fallback
+        base_min = 0.0
+        base_max = 1.0
         
         try:
             # Flatten and filter for valid numbers
             all_values = []
-            for sublist in df[col_name]:
-                if isinstance(sublist, (list, tuple)):
-                    for v in sublist:
+            if col_name in df.columns:
+                for val_or_list in df[col_name]:
+                    # Handle both list of values (sparkline source) or single values if mixed
+                    if isinstance(val_or_list, (list, tuple)):
+                        for v in val_or_list:
+                            try:
+                                f = float(v)
+                                if f == f and f != float('inf') and f != float('-inf'): # Valid finite number
+                                    all_values.append(f)
+                            except: pass
+                    else:
                         try:
-                            f = float(v)
-                            # Check for NaN or Inf
-                            if f == f and f != float('inf') and f != float('-inf'):
-                                all_values.append(f)
+                             f = float(val_or_list)
+                             if f == f and f != float('inf') and f != float('-inf'):
+                                 all_values.append(f)
                         except: pass
             
             if not all_values:
-                # No valid data
                 return st.column_config.LineChartColumn(title, width="small", y_min=base_min, y_max=base_max)
             
-            mn = min(all_values)
-            mx = max(all_values)
+            mn = float(min(all_values))
+            mx = float(max(all_values))
             
-            y_min = None
-            y_max = None
-            
-            # 1. Flat Data or extremely small range
-            if abs(mx - mn) < 1e-9:
-                if abs(mn) < 1e-9: # Both ~0
-                    y_min = 0
-                    y_max = 1
-                else:
-                    y_min = mn - 0.5
-                    y_max = mx + 0.5
-            else:
-                # 2. Variation
-                if mn >= 0:
-                    y_min = 0
-                    y_max = None
-                else:
-                    y_min = None
-                    y_max = None
-                    
+            # Policy:
+            # 1. If all non-negative, anchor y_min at 0.
+            if mn >= 0:
+                mn = 0.0
+                
+            # 2. Ensure y_max > y_min
+            if mx <= mn:
+                mx = mn + 1.0
+                
+            # 3. Add a tiny buffer if range is very small (optional, but safer for rendering)
+            if (mx - mn) < 1e-6:
+                mx = mn + 1.0
+                
             return st.column_config.LineChartColumn(
                 title, 
-                y_min=y_min,
-                y_max=y_max, 
+                y_min=mn,
+                y_max=mx, 
                 width="small"
             )
 
         except Exception:
-            # Fallback for any unexpected error
             return st.column_config.LineChartColumn(title, width="small", y_min=base_min, y_max=base_max)
 
     # helper
