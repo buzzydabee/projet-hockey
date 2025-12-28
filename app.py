@@ -465,6 +465,48 @@ def main():
         min_date = datetime.now().date()
         max_date = datetime.now().date()
 
+    # --- CSS HACK FOR COMPACT INSTANCE ---
+    st.markdown("""
+    <style>
+        /* Force smaller font in dataframes */
+        [data-testid="stDataFrame"] {
+            font-size: 13px !important;
+        }
+        /* Compacting Rows */
+        div[data-testid="stDataFrame"] div[role="gridcell"] {
+            padding-top: 2px !important;
+            padding-bottom: 2px !important;
+            line-height: 1.1 !important;
+            min-height: 25px !important; 
+        }
+        div[data-testid="stDataFrame"] div[role="row"] {
+            min-height: 25px !important;
+        }
+        
+        /* Force Centering of Headers and Cells */
+        div[data-testid="stDataFrame"] div[role="columnheader"] > div, 
+        div[data-testid="stDataFrame"] div[role="gridcell"] > div {
+            display: flex !important;
+            justify-content: center !important;
+            text-align: center !important;
+        }
+        
+        /* Ensure the text itself is centered */
+        div[data-testid="stDataFrame"] div[role="gridcell"] p,
+        div[data-testid="stDataFrame"] div[role="columnheader"] p {
+             text-align: center !important;
+        }
+
+        /* Exception: Team Name (First Column) usually should be Left, but 
+           CSS nth-child is tricky with virtual scroll. 
+           We accept centered Team Names for now to guarantee stats are centered. */
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Theme Check Warning (Removed as it is active)
+    # if st.get_option("theme.primaryColor") != "#00A8E8":
+    #    st.warning("⚠️ Pour voir le nouveau thème 'Bleu Glace', veuillez redémarrer l'application dans le terminal (Ctrl+C puis relancez).")
+
     # --- SIDEBAR FILTERS ---
     st.sidebar.header("Filtres")
     
@@ -491,9 +533,8 @@ def main():
     elif filter_mode == "Sélection Personnalisée":
         selected_teams = st.sidebar.multiselect("Choisir les Équipes", all_teams, default=all_teams[:1])
     
-    
     # --- STATS MODE ---
-    stats_mode = st.sidebar.radio("Mode de Calcul", ["Stats Globales", "Face-à-Face"])
+    stats_mode = st.sidebar.radio("Mode de Calcul", ["Stats Globales", "Un contre tous", "Face-à-Face"])
 
     # 2. Date Filter
     st.sidebar.divider()
@@ -517,11 +558,15 @@ def main():
     if stats_mode == "Face-à-Face":
         if len(selected_teams) < 2:
             st.warning("Le mode Face-à-Face requiert au moins 2 équipes sélectionnées.")
-            # Fallback to empty to avoid confusion or show nothing
+            # Fallback to empty
             games = pd.DataFrame(columns=games.columns)
         else:
             # Keep games where BOTH teams are in selection
             games = games[games['home'].isin(selected_teams) & games['visitor'].isin(selected_teams)]
+            
+    elif stats_mode == "Un contre tous":
+        # Keep games where ANY selected team is involved
+        games = games[games['home'].isin(selected_teams) | games['visitor'].isin(selected_teams)]
     
     valid_game_ids = games['game_id'].unique()
     
@@ -572,33 +617,39 @@ def main():
                 st.sidebar.error(f"Erreur de reconstruction: {e}")
     
     # --- STANDINGS ---
-    st.header("Classement Général")
-    with st.expander("Voir la légende"):
-         l1, l2, l3 = st.columns(3)
-         with l1:
-             st.markdown("""<div style="font-size: 13px; line-height: 1.4;">
-             <strong>Général</strong><br>
-             <b>MJ</b>: Matchs joués<br>
-             <b>V</b>: Victoires<br>
-             <b>D</b>: Défaites<br>
-             <b>N</b>: Nulles<br>
-             <b>PTS</b>: Points
-             </div>""", unsafe_allow_html=True)
-         with l2:
-             st.markdown("""<div style="font-size: 13px; line-height: 1.4;">
-             <strong>Buts</strong><br>
-             <b>BP</b>: Buts pour<br>
-             <b>BC</b>: Buts contre<br>
-             <b>DIFF</b>: Différentiel<br>
-             <b>FJ</b>: Franc-jeu
-             </div>""", unsafe_allow_html=True)
-         with l3:
-             st.markdown("""<div style="font-size: 13px; line-height: 1.4;">
-             <strong>Spécial</strong><br>
-             <b>%AN</b>: % Avantage num.<br>
-             <b>%DN</b>: % Désavantage num.<br>
-             <b>PUN</b>: Punitions (min)
-             </div>""", unsafe_allow_html=True)
+    # Custom Toggle to keep Button on Right BUT Content Full Width
+    if 'leg_standings' not in st.session_state: st.session_state.leg_standings = False
+    
+    c_title, c_legend = st.columns([0.85, 0.15])
+    with c_title:
+        st.header("Classement Général")
+    with c_legend:
+        if st.button("Légende 📝", key="btn_leg_standings"):
+            st.session_state.leg_standings = not st.session_state.leg_standings
+    
+    if st.session_state.leg_standings:
+         with st.container():
+             l1, l2, l3 = st.columns(3)
+             with l1:
+                 st.markdown("""<div style="font-size: 13px; line-height: 1.4;">
+                 <strong>Général</strong><br>
+                 <b>MJ</b>: Matchs joués, <b>V</b>: Victoires<br>
+                 <b>D</b>: Défaites, <b>N</b>: Nulles<br>
+                 <b>PTS</b>: Points
+                 </div>""", unsafe_allow_html=True)
+             with l2:
+                 st.markdown("""<div style="font-size: 13px; line-height: 1.4;">
+                 <strong>Buts</strong><br>
+                 <b>BP</b>: Pour, <b>BC</b>: Contre<br>
+                 <b>DIFF</b>: Différentiel, <b>FJ</b>: Franc-jeu
+                 </div>""", unsafe_allow_html=True)
+             with l3:
+                 st.markdown("""<div style="font-size: 13px; line-height: 1.4;">
+                 <strong>Spécial</strong><br>
+                 <b>%AN</b>: % Av. Num., <b>%DN</b>: % Dés. Num.<br>
+                 <b>PUN</b>: Punitions (min)
+                 </div>""", unsafe_allow_html=True)
+             st.markdown("---")
     
     # Filter for Standings based on SELECTED TEAMS
     # Logic: Show standings for games involving ANY of the selected teams.
@@ -606,20 +657,19 @@ def main():
     standings_penalties = penalties
     
     # Only filter if we haven't selected ALL teams (optimization)
-    if len(selected_teams) < len(all_teams):
-        # Keep games where Home OR Visitor is in the selection
-        standings_games = games[games['home'].isin(selected_teams) | games['visitor'].isin(selected_teams)]
-        s_ids = standings_games['game_id'].unique()
-        standings_penalties = penalties[penalties['game_id'].isin(s_ids)]
-        
+    # BUT in "Un contre tous", games is already filtered, so we can pass it directly.
+    # The optimization below is mainly for Global mode.
+    # If stats_mode != 'Un contre tous' and len...
+    
     standings = calculate_standings(standings_games, standings_penalties)
     
-    # If we selected specific teams, we probably only want to SEE those teams in the table?
-    # Or do we want to see their opponents too?
-    # Usually "Filter by Team" implies "Show me rows for these teams".
-    # Let's filter the FINAL standings dataframe to only show selected teams rows.
+    # DISPLAY FILTERING
+    # If "Globales" or "Face-à-Face", we usually only show the selected teams.
+    # If "Un contre tous", we show selected teams AND their opponents (so, everyone in the standings_games).
     if not standings.empty:
-         standings = standings[standings['Team'].isin(selected_teams)]
+         if stats_mode != "Un contre tous":
+             standings = standings[standings['Team'].isin(selected_teams)]
+             
          standings = standings.reset_index(drop=True)
          standings.index += 1
          
@@ -629,6 +679,12 @@ def main():
              'GF': 'BP', 'GA': 'BC', 'PP%': '%AN', 'PK%': '%DN', 'PIM': 'PUN'
          })
          
+         # Force Numeric Types (Fixes Left Alignment issue)
+         numeric_cols = ['PTS', 'MJ', 'V', 'D', 'N', 'BP', 'BC', 'DIFF', 'PUN']
+         for c in numeric_cols:
+             if c in standings.columns:
+                 standings[c] = pd.to_numeric(standings[c], errors='coerce').fillna(0)
+         
          # Enforce Sort explicitly on the view
          standings = standings.sort_values(by=['PTS', 'V', 'DIFF', 'BP'], ascending=False).reset_index(drop=True)
          standings.index += 1
@@ -637,36 +693,76 @@ def main():
          standings = pd.DataFrame(columns=['Équipe', 'PTS', 'MJ', 'V', 'D', 'N', 'FJ', 'BP', 'BC', 'DIFF', '%AN', '%DN', 'PUN'])
 
     cols_to_show = ['Équipe', 'PTS', 'MJ', 'V', 'D', 'N', 'FJ', 'BP', 'BC', 'DIFF', '%AN', '%DN', 'PUN']
-    st.dataframe(standings[cols_to_show], use_container_width=True)
+    
+    if not standings.empty:
+        max_pts = max(standings['PTS'].max(), 10)
+        
+    # STYLING: Center all columns except Team
+    # We use pandas Styler to enforce text-align: center
+    # Note: Streamlit column_config might override data alignment, but we try our best.
+    # Headers need 'th' selector.
+    styler_standings = standings[cols_to_show].style.set_properties(
+        subset=cols_to_show[1:], # Skip 'Équipe'
+        **{'text-align': 'center'}
+    ).set_table_styles([
+        {'selector': 'th', 'props': [('text-align', 'center !important')]},
+        {'selector': 'td', 'props': [('text-align', 'center !important')]}
+    ])
+    
+    st.dataframe(
+        styler_standings, 
+        use_container_width=True,
+        column_config={
+            "PTS": st.column_config.ProgressColumn(
+                "PTS",
+                format="%d",
+                min_value=0,
+                max_value=int(max_pts),
+            ),
+            "%AN": st.column_config.NumberColumn(
+                "%AN",
+                format="%.1f%%"
+            ),
+            "%DN": st.column_config.NumberColumn(
+                "%DN",
+                format="%.1f%%"
+            )
+        }
+    )
     
     # --- GOALIE STATS ---
-    st.header("Statistiques Gardiens")
-    with st.expander("Voir la légende"):
-        g1, g2 = st.columns(2)
-        with g1:
-            st.markdown("""<div style="font-size: 13px; line-height: 1.4;">
-            <b>MJ</b>: Matchs joués<br>
-            <b>MA</b>: Matchs amorcés<br>
-            <b>V</b>: Victoires<br>
-            <b>D</b>: Défaites<br>
-            <b>V</b>: Victoires<br>
-            <b>D</b>: Défaites<br>
-            <b>N</b>: Nulles<br>
-            </div>""", unsafe_allow_html=True)
-        with g2:
-            st.markdown("""<div style="font-size: 13px; line-height: 1.4;">
-            <b>BC</b>: Buts contre<br>
-            <b>Lancers</b>: Tirs contre (TC)<br>
-            <b>%Arr</b>: % d'arrêts<br>
-            <b>Moy</b>: Moyenne (GAA)<br>
-            <b>BL</b>: Blanchissages<br>
-            <b>TG</b>: Temps de glace
-            </div>""", unsafe_allow_html=True)
+    if 'leg_goalies' not in st.session_state: st.session_state.leg_goalies = False
+    
+    c_g_title, c_g_leg = st.columns([0.85, 0.15])
+    with c_g_title:
+        st.header("Statistiques Gardiens")
+    with c_g_leg:
+        if st.button("Légende 📝", key="btn_leg_goalies"):
+            st.session_state.leg_goalies = not st.session_state.leg_goalies
+            
+    if st.session_state.leg_goalies:
+        with st.container():
+            g1, g2 = st.columns(2)
+            with g1:
+                st.markdown("""<div style="font-size: 13px; line-height: 1.4;">
+                <b>MJ</b>: Matchs joués, <b>MA</b>: Matchs amorcés<br>
+                <b>V</b>: Victoires, <b>D</b>: Défaites, <b>N</b>: Nulles<br>
+                <b>DP</b>: Déf. Prol.
+                </div>""", unsafe_allow_html=True)
+            with g2:
+                st.markdown("""<div style="font-size: 13px; line-height: 1.4;">
+                <b>BC</b>: Buts contre, <b>Lancers</b>: Tirs (TC)<br>
+                <b>%Arr</b>: % d'arrêts, <b>Moy</b>: Moyenne (GAA)<br>
+                <b>BL</b>: Blanchissages, <b>TG</b>: Temps de glace
+                </div>""", unsafe_allow_html=True)
+            st.markdown("---")
+            
     gdf = calculate_goalie_stats(conn, valid_game_ids)
     
     # Filter Goalies by Team Selection
     if not gdf.empty:
-        gdf = gdf[gdf['Team'].isin(selected_teams)]
+        if stats_mode != "Un contre tous":
+            gdf = gdf[gdf['Team'].isin(selected_teams)]
     
     if not gdf.empty:
         gdf = gdf.sort_values(by=['Moy', 'MJ'], ascending=[True, False]).reset_index(drop=True)
@@ -676,40 +772,72 @@ def main():
         gdf = gdf.rename(columns={'Name': 'Nom', 'Team': 'Équipe', 'Shots': 'Lancers'})
         
         cols = ['Nom', 'Équipe', 'MJ', 'MA', 'V', 'D', 'N', 'BL', 'BC', 'Lancers', 'Moy', '%Arr', 'TG_str']
-        st.dataframe(gdf[cols], use_container_width=True)
+        
+        # STYLING
+        # Center stats columns (Skip Nom, Team)
+        stats_cols_g = cols[2:] 
+        styler_gdf = gdf[cols].style.set_properties(
+            subset=stats_cols_g,
+            **{'text-align': 'center'}
+        ).set_table_styles([
+            {'selector': 'th', 'props': [('text-align', 'center !important')]},
+            {'selector': 'td', 'props': [('text-align', 'center !important')]}
+        ])
+        
+        st.dataframe(
+            styler_gdf, 
+            use_container_width=True,
+            column_config={
+                 "%Arr": st.column_config.NumberColumn(
+                    "%Arr",
+                    format="%.3f"
+                ),
+                "Moy": st.column_config.NumberColumn(
+                    "Moy",
+                    format="%.2f"
+                )
+            }
+        )
     else:
         st.info("No goalie stats available for selected selection.")
         
     conn.close()
 
     # --- ADVANCED PLAYER STATS ---
-    st.header("Statistiques Joueurs")
-    with st.expander("Voir la légende"):
-        p1, p2 = st.columns(2)
-        with p1:
-            st.markdown("""<div style="font-size: 13px; line-height: 1.4;">
-            <strong>Offensif</strong><br>
-            <b>MJ</b>: Matchs joués<br>
-            <b>B</b>: Buts<br>
-            <b>A</b>: Aides<br>
-            <b>PTS</b>: Points (PTS/MJ: par match)<br>
-            <b>PEM</b>: Min. Punition (PUN: Nbr)
-            </div>""", unsafe_allow_html=True)
-        with p2:
-            st.markdown("""<div style="font-size: 13px; line-height: 1.4;">
-            <strong>Situationnel</strong><br>
-            <b>BAN/AAN</b>: Buts/Aides (AV)<br>
-            <b>PTS AN</b>: Points (AV)<br>
-            <b>BIN/AID</b>: Buts/Aides (DN)<br>
-            <b>PTS IN</b>: Points (DN)<br>
-            <b>BG/BE</b>: But Gagnant/Égalisateur
-            </div>""", unsafe_allow_html=True)
+    if 'leg_players' not in st.session_state: st.session_state.leg_players = False
+    
+    c_p_title, c_p_leg = st.columns([0.85, 0.15])
+    with c_p_title:
+        st.header("Statistiques Joueurs")
+    with c_p_leg:
+        if st.button("Légende 📝", key="btn_leg_players"):
+            st.session_state.leg_players = not st.session_state.leg_players
+            
+    if st.session_state.leg_players:
+        with st.container():
+            p1, p2 = st.columns(2)
+            with p1:
+                st.markdown("""<div style="font-size: 13px; line-height: 1.4;">
+                <strong>Offensif</strong><br>
+                <b>MJ</b>: Joués, <b>B</b>: Buts, <b>A</b>: Aides<br>
+                <b>PTS</b>: Points, <b>PTS/MJ</b>: Pts/Match<br>
+                <b>PEM</b>: Min. Pén., <b>PUN</b>: Nbr Pén.
+                </div>""", unsafe_allow_html=True)
+            with p2:
+                st.markdown("""<div style="font-size: 13px; line-height: 1.4;">
+                <strong>Situationnel</strong><br>
+                <b>BAN/AAN</b>: Av. Num., <b>PTS AN</b>: Pts AV<br>
+                <b>BIN/AID</b>: Dés. Num., <b>PTS IN</b>: Pts DN<br>
+                <b>BG/BE</b>: But Gagnant/Égalisateur
+                </div>""", unsafe_allow_html=True)
+            st.markdown("---")
     # Calculate for ALL (expensive?) or filtered?
     p_df = calculate_player_stats(games, goals, penalties, players)
     
     # Filter Players by Team Selection
     if not p_df.empty:
-        p_df = p_df[p_df['Team'].isin(selected_teams)]
+        if stats_mode != "Un contre tous":
+            p_df = p_df[p_df['Team'].isin(selected_teams)]
     
     # Player Filter Widget (specific names)
     if not p_df.empty:
@@ -731,7 +859,42 @@ def main():
         # Reorder columns to match request roughly: MJ B A PTS PEM BAN AAN PTS_AN BIN AID PTS_IN BG BE
         cols = ['Nom', 'Équipe', 'MJ', 'B', 'A', 'PTS', 'PEM', 'PUN', 'PEM/MJ', 'PTS/MJ', 
                 'BAN', 'AAN', 'PTS_AN', 'BIN', 'AID', 'PTS_IN', 'BG', 'BE']
-        st.dataframe(p_df[cols], use_container_width=True)
+        
+        # STYLING
+        stats_cols_p = cols[2:] # Skip Nom, Equipe
+        styler_pdf = p_df[cols].style.set_properties(
+            subset=stats_cols_p,
+            **{'text-align': 'center'}
+        ).set_table_styles([
+            {'selector': 'th', 'props': [('text-align', 'center !important')]},
+            {'selector': 'td', 'props': [('text-align', 'center !important')]}
+        ])
+        
+        st.dataframe(
+            styler_pdf, 
+            use_container_width=True,
+            column_config={
+                "PTS": st.column_config.ProgressColumn(
+                    "PTS",
+                    help="Points au total",
+                    format="%d",
+                    min_value=0,
+                    max_value=int(max(p_df['PTS'].max(), 1)),
+                ),
+                "PTS/MJ": st.column_config.NumberColumn(
+                    "PTS/MJ",
+                    format="%.2f"
+                ),
+                "PEM/MJ": st.column_config.NumberColumn(
+                    "PEM/MJ",
+                    format="%.2f"
+                ),
+                 "Équipe": st.column_config.TextColumn(
+                    "Équipe",
+                    width="medium"
+                )
+            }
+        )
     else:
         st.info("Aucune statistique de joueur trouvée.")
 
