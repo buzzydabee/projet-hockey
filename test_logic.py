@@ -9,7 +9,7 @@ sys.modules["streamlit"] = MagicMock()
 # Import app functions
 # We need to make sure we can import from the current directory
 sys.path.append('.')
-from app import load_data, calculate_standings, calculate_goalie_stats, calculate_player_stats, DB_NAME
+from app import load_data, calculate_standings, calculate_goalie_stats, calculate_player_stats, DB_NAME, parse_french_date
 
 def test_logic():
     print("--- STARTING DASHBOARD LOGIC TEST ---")
@@ -96,6 +96,46 @@ def test_logic():
         print(f"[FAIL] Empty Standings Crash Test: {e}")
 
     print("--- TEST COMPLETE ---")
+
+    # 6. Test Evolution View (Runtime Check)
+    print("--- Testing Evolution View Logic ---")
+    try:
+        from app import render_evolution
+        
+        # Setup Mock Data
+        conn = sqlite3.connect(DB_NAME)
+        players = pd.read_sql_query("SELECT * FROM DimPlayer", conn)
+        valid_ids = games['game_id'].unique()
+        
+        # Filter games to ensure we have data
+        # Add date_dt as per main()
+        games['date_dt'] = games['date'].apply(parse_french_date)
+        games = games.dropna(subset=['date_dt'])
+
+        # Use first available team
+        if not games.empty:
+            team1 = games.iloc[0]['home']
+            selected = [team1]
+            if len(games) > 1:
+                selected.append(games.iloc[0]['visitor'])
+        else:
+            selected = []
+            
+        # Run Evolution
+        # Mock st functions are already set up in sys.modules["streamlit"]
+        # We just want to ensure it doesn't THROW.
+        render_evolution(games, goals, penalties, conn, selected, "Globales", players, num_periods=4)
+        print("[OK] render_evolution executed without error (Globales).")
+        
+        render_evolution(games, goals, penalties, conn, selected, "Un contre tous", players, num_periods=2)
+        print("[OK] render_evolution executed without error (Un contre tous).")
+        
+        conn.close()
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"[FAIL] Evolution View Error: {e}")
 
 if __name__ == "__main__":
     test_logic()

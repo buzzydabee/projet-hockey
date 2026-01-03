@@ -534,7 +534,9 @@ def main():
                 st.sidebar.success(f"{len(selected_teams)} équipes dans {div}")
                 
     elif filter_mode == "Sélection Personnalisée":
-        selected_teams = st.sidebar.multiselect("Choisir les Équipes", all_teams, default=all_teams[:1])
+        default_t = "BÉLIERS QUÉBEC-CENTRE"
+        defaults = [default_t] if default_t in all_teams else all_teams[:1]
+        selected_teams = st.sidebar.multiselect("Choisir les Équipes", all_teams, default=defaults)
     
     # --- STATS MODE ---
     stats_mode = st.sidebar.radio("Mode de Calcul", ["Stats Globales", "Un contre tous", "Face-à-Face"])
@@ -623,13 +625,15 @@ def main():
     view = st.sidebar.radio("Vue", ["Tableau de bord", "Évolution"], index=0)
 
     if view == "Tableau de bord":
-        render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, players)
+        normalize = st.sidebar.checkbox("Normaliser par MJ", value=False)
+        render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, players, normalize)
     else:
-        render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, players)
+        num_periods = st.sidebar.slider("Nombre de périodes", 1, 5, 4)
+        render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, players, num_periods)
         
     conn.close()
 
-def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, players):
+def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, players, normalize=False):
     # --- STANDINGS ---
     # Custom Toggle to keep Button on Right BUT Content Full Width
     if 'leg_standings' not in st.session_state: st.session_state.leg_standings = False
@@ -708,28 +712,97 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
 
     cols_to_show = ['Équipe', 'PTS/MJ', 'PTS', 'MJ', 'V', 'D', 'N', 'FJ', 'BP', 'BC', 'DIFF', '%AN', '%DN', 'PUN']
     
+    # Normalization Logic
+    if normalize:
+        # Calculate per-game stats
+        norm_cols_map = {
+            'V': 'V/MJ', 'D': 'D/MJ', 'N': 'N/MJ', 'FJ': 'FJ/MJ',
+            'BP': 'BP/MJ', 'BC': 'BC/MJ', 'DIFF': 'DIFF/MJ', 'PUN': 'PUN/MJ'
+        }
+        for col, new_col in norm_cols_map.items():
+            standings[new_col] = standings.apply(lambda r: r[col]/r['MJ'] if r['MJ'] > 0 else 0, axis=1)
+            
+        # Reorder: [Rank, Team] [PTS/MJ, V/MJ...] [PTS, V...]
+        # PTS/MJ exists. 
+        # New order: PTS/MJ, V/MJ, D/MJ, N/MJ, FJ/MJ, BP/MJ, BC/MJ, DIFF/MJ, PUN/MJ
+        norm_cols_ordered = ['PTS/MJ'] + list(norm_cols_map.values())
+        orig_cols = [c for c in cols_to_show if c not in norm_cols_ordered and c != 'Équipe'] # PTS is in orig, PTS/MJ is norm
+        
+        # PTS/MJ is already in cols_to_show, handle it carefully
+        # Remove PTS/MJ from orig list if present (it is) and we treat it as normalized head.
+        orig_cols = [c for c in orig_cols if c != 'PTS/MJ' and c != 'MJ']
+        
+        # New Request: Add MJ as first stat
+        cols_to_show = ['Équipe', 'MJ'] + norm_cols_ordered + orig_cols
+
+    # --- HEATMAP LOGIC ---
+    # Define Roots
+    # Positive (High=Green): PTS, V, N, FJ, BP, DIFF, %AN, %DN, BL, %Arr, B, A, MA, ...
+    # Negative (High=Red): D, BC, PUN, PEM, Moy
+    
+    pos_roots = ['PTS', 'V', 'N', 'FJ', 'BP', 'DIFF', '%AN', '%DN', 'BL', '%Arr', 'B', 'A', 'MA', 
+                 'BAN', 'AAN', 'PTS_AN', 'BIN', 'AID', 'PTS_IN', 'BG', 'BE']
+    neg_roots = ['D', 'BC', 'PUN', 'PEM', 'Moy']
+    
+    # Custom Colormaps for Dark Mode (Red -> Black -> Green)
+    try:
+        from matplotlib.colors import LinearSegmentedColormap
+        # Streamlit dark bg is approx #0e1117. 
+        # Positive Stats (PTS, V): Low=Red, High=Green
+        cmap_pos = LinearSegmentedColormap.from_list("custom_pos", ["#4d0000", "#0e1117", "#004d00"])
+        # Negative Stats (PUN, D): Low=Green, High=Red
+        cmap_neg = LinearSegmentedColormap.from_list("custom_neg", ["#004d00", "#0e1117", "#4d0000"])
+    except:
+        # Fallback if matplotlib not found (unlikely)
+        cmap_pos = 'RdYlGn'
+        cmap_neg = 'RdYlGn_r'
+
+    def get_column_type(col_name):
+        # Remove /MJ suffix for check
+        root = col_name.replace('/MJ', '')
+        if root in pos_roots: return 'pos'
+        if root in neg_roots: return 'neg'
+        return 'neu'
+
     # Pts/MJ max is usually 2 (win) + maybe 1 fair play / 1 game = 3 max?
     # Or standard W=2, T=1, FJ=1. Max per game = 3.
     max_pmj = 3.0
     if not standings.empty: 
         max_pmj = max(standings['PTS/MJ'].max(), 3.0)
         
-    # STYLING: Center all columns except Team
+    # STYLING: Center all columns except Team (which is now in Index)
     # We use pandas Styler to enforce text-align: center
     # Note: Streamlit column_config might override data alignment, but we try our best.
     # Headers need 'th' selector.
-    styler_standings = standings[cols_to_show].style.set_properties(
-        subset=cols_to_show[1:], # Skip 'Équipe'
+    
+    # Move Team to Index for pinning
+    standings.index.name = "Rang"
+    standings.set_index("Équipe", append=True, inplace=True)
+    
+    # Filter cols_to_show to exclude Équipe since it is in index
+    cols_data = [c for c in cols_to_show if c != 'Équipe']
+    
+    # Apply Heatmap
+    # Split cols_data into pos and neg
+    std_pos = [c for c in cols_data if get_column_type(c) == 'pos']
+    std_neg = [c for c in cols_data if get_column_type(c) == 'neg']
+    
+    styler_standings = standings[cols_data].style.set_properties(
+        subset=cols_data, 
         **{'text-align': 'center'}
     ).set_table_styles([
         {'selector': 'th', 'props': [('text-align', 'center !important')]},
         {'selector': 'td', 'props': [('text-align', 'center !important')]}
     ])
     
+    if std_pos: styler_standings = styler_standings.background_gradient(cmap=cmap_pos, subset=std_pos)
+    if std_neg: styler_standings = styler_standings.background_gradient(cmap=cmap_neg, subset=std_neg)
+    
     st.dataframe(
         styler_standings, 
         use_container_width=True,
         column_config={
+
             "PTS/MJ": st.column_config.ProgressColumn(
                 "PTS/MJ",
                 format="%.3f",
@@ -747,7 +820,9 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             "%DN": st.column_config.NumberColumn(
                 "%DN",
                 format="%.1f%%"
-            )
+            ),
+            # Add formats for normalized cols (defaults to %.2f usually but let's be explicit if needed or rely on default)
+            **({c: st.column_config.NumberColumn(format="%.2f") for c in cols_to_show if '/MJ' in c} if normalize else {})
         }
     )
     
@@ -796,16 +871,47 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
         
         cols = ['Nom', 'Équipe', 'MJ', 'MA', 'V', 'D', 'N', 'BL', 'BC', 'Lancers', 'Moy', '%Arr', 'TG_str']
         
+        if normalize:
+            # Map
+            g_norm_map = {
+                'MA': 'MA/MJ', 'V': 'V/MJ', 'D': 'D/MJ', 'N': 'N/MJ',
+                'BL': 'BL/MJ', 'BC': 'BC/MJ', 'Lancers': 'Lancers/MJ'
+            }
+            for col, new_col in g_norm_map.items():
+                gdf[new_col] = gdf.apply(lambda r: r[col]/r['MJ'] if r['MJ'] > 0 else 0, axis=1)
+                
+                
+            norm_order = list(g_norm_map.values())
+            orig_order = [c for c in cols if c not in ['Nom', 'Équipe', 'MJ']]
+            
+            # New request: MJ first
+            cols = ['Nom', 'Équipe', 'MJ'] + norm_order + orig_order
+        
         # STYLING
         # Center stats columns (Skip Nom, Team)
         stats_cols_g = cols[2:] 
-        styler_gdf = gdf[cols].style.set_properties(
-            subset=stats_cols_g,
+        
+        # Pin Nom
+        gdf.index.name = "Rang"
+        gdf.set_index("Nom", append=True, inplace=True)
+        
+        # Cols to display (excluding Nom which is in index)
+        # We perform style on the remaining columns
+        cols_display = [c for c in cols if c != 'Nom']
+        
+        styler_gdf = gdf[cols_display].style.set_properties(
+            subset=list(set(cols_display) & set(stats_cols_g)), # Ensure intersection
             **{'text-align': 'center'}
         ).set_table_styles([
             {'selector': 'th', 'props': [('text-align', 'center !important')]},
             {'selector': 'td', 'props': [('text-align', 'center !important')]}
         ])
+        
+        g_pos = [c for c in cols_display if get_column_type(c) == 'pos']
+        g_neg = [c for c in cols_display if get_column_type(c) == 'neg']
+        
+        if g_pos: styler_gdf = styler_gdf.background_gradient(cmap=cmap_pos, subset=g_pos)
+        if g_neg: styler_gdf = styler_gdf.background_gradient(cmap=cmap_neg, subset=g_neg)
         
         st.dataframe(
             styler_gdf, 
@@ -818,7 +924,8 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                 "Moy": st.column_config.NumberColumn(
                     "Moy",
                     format="%.2f"
-                )
+                ),
+                **({c: st.column_config.NumberColumn(format="%.2f") for c in cols if '/MJ' in c} if normalize else {})
             }
         )
     else:
@@ -878,19 +985,81 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
         p_df = p_df.rename(columns={'Name': 'Nom', 'Team': 'Équipe'})
         
         # Reorder columns to match request roughly: MJ B A PTS PEM BAN AAN PTS_AN BIN AID PTS_IN BG BE
-        # Reorder columns to match request roughly: MJ B A PTS PEM BAN AAN PTS_AN BIN AID PTS_IN BG BE
+        col_map_p = {
+            'MJ': 'MJ', 'B': 'B', 'A': 'A', 'PTS': 'PTS', 'PEM': 'PEM', 'PUN': 'PUN',
+            'PEM/MJ': 'PEM/MJ', 'PTS/MJ': 'PTS/MJ',
+            'BAN': 'BAN', 'AAN': 'AAN', 'PTS_AN': 'PTS_AN', 'BIN': 'BIN', 'AID': 'AID', 
+            'PTS_IN': 'PTS_IN', 'BG': 'BG', 'BE': 'BE'
+        }
+        
         cols = ['Nom', 'Équipe', 'MJ', 'B', 'A', 'PTS', 'PEM', 'PUN', 'PEM/MJ', 'PTS/MJ', 
                 'BAN', 'AAN', 'PTS_AN', 'BIN', 'AID', 'PTS_IN', 'BG', 'BE']
+
+        if normalize:
+            # Stats to normalize
+            # Already have PTS/MJ, PEM/MJ
+            p_to_norm = ['B', 'A', 'PUN', 'BAN', 'AAN', 'PTS_AN', 'BIN', 'AID', 'PTS_IN', 'BG', 'BE']
+            
+            p_norm_cols = []
+            for col in p_to_norm:
+                new_col = f"{col}/MJ"
+                p_df[new_col] = p_df.apply(lambda r: r[col]/r['MJ'] if r['MJ'] > 0 else 0, axis=1)
+                p_norm_cols.append(new_col)
+                
+            # Order: [Nom, Team] [PTS/MJ, PEM/MJ] + [Other Norms] + [Originals]
+            # Actually user asked: "stats normalisées ... meme ordre que stats originales, gauche du tableau"
+            # Original: MJ B A PTS PEM PUN PEM/MJ PTS/MJ BAN ...
+            # Normalized block: B/MJ, A/MJ, PTS/MJ, PEM/MJ, PUN/MJ ...
+            
+            # Let's construct a cleaner normalized block
+            # Start with PTS/MJ and PEM/MJ which exist
+            
+            # Requested logic: Normalized versions of [B, A, PTS, PEM, PUN, BAN...]
+            # Note: PTS/MJ and PEM/MJ are heavily used, put them first or with their group?
+            # User said: "meme ordre que stats originales".
+            # Original: B, A, PTS, PEM, PUN, BAN...
+            # Norm: B/MJ, A/MJ, PTS/MJ, PEM/MJ, PUN/MJ, BAN/MJ...
+            
+            final_norm_ordered = ['B/MJ', 'A/MJ', 'PTS/MJ', 'PEM/MJ', 'PUN/MJ', 'BAN/MJ', 'AAN/MJ', 
+                                  'PTS_AN/MJ', 'BIN/MJ', 'AID/MJ', 'PTS_IN/MJ', 'BG/MJ', 'BE/MJ']
+            
+            # Ensure all exist (PTS/MJ and PEM/MJ exist, others created)
+            
+            orig_data_cols = [c for c in cols if c not in ['Nom', 'Équipe', 'PTS/MJ', 'PEM/MJ']] # Remove existing ratios from orig block if moving them?
+            # User usually wants to KEEP original stats too.
+            # "apparaître à la gauche du tableau AVANT les statistiques originales."
+            
+            # So: [Nom, Team] [Norm Block] [Orig Block]
+            orig_cols_filtered = [c for c in cols if c not in final_norm_ordered and c not in ['Nom', 'Équipe', 'MJ']]
+            cols = ['Nom', 'Équipe', 'MJ'] + final_norm_ordered + orig_cols_filtered
+            
+            # We strictly need to ensure columns exist in DF
+            # We created the loop ones. PTS/MJ and PEM/MJ exist.
+            pass
+
         
         # STYLING
         stats_cols_p = cols[2:] # Skip Nom, Equipe
-        styler_pdf = p_df[cols].style.set_properties(
-            subset=stats_cols_p,
+        
+        # Pin Nom
+        p_df.index.name = "Rang"
+        p_df.set_index("Nom", append=True, inplace=True)
+        
+        cols_display_p = [c for c in cols if c != 'Nom']
+        
+        styler_pdf = p_df[cols_display_p].style.set_properties(
+            subset=list(set(cols_display_p) & set(stats_cols_p)),
             **{'text-align': 'center'}
         ).set_table_styles([
             {'selector': 'th', 'props': [('text-align', 'center !important')]},
             {'selector': 'td', 'props': [('text-align', 'center !important')]}
         ])
+
+        p_pos = [c for c in cols_display_p if get_column_type(c) == 'pos']
+        p_neg = [c for c in cols_display_p if get_column_type(c) == 'neg']
+
+        if p_pos: styler_pdf = styler_pdf.background_gradient(cmap=cmap_pos, subset=p_pos)
+        if p_neg: styler_pdf = styler_pdf.background_gradient(cmap=cmap_neg, subset=p_neg)
         
         st.dataframe(
             styler_pdf, 
@@ -914,7 +1083,8 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                  "Équipe": st.column_config.TextColumn(
                     "Équipe",
                     width="medium"
-                )
+                ),
+                **({c: st.column_config.NumberColumn(format="%.2f") for c in cols if '/MJ' in c} if normalize else {})
             }
         )
     else:
@@ -972,11 +1142,11 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
         with tab3:
              st.dataframe(goals_filtered)
 
-def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, players):
+def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, players, num_periods=4):
     st.header("📈 Évolution de la Saison")
-    st.caption("Les indicateurs sont calculés sur 4 périodes de durée égale, basées sur la plage de dates sélectionnée.")
+    st.caption(f"Les indicateurs sont calculés sur {num_periods} périodes de durée égale, basées sur la plage de dates sélectionnée.")
 
-    # 1. Split Time Range into 4 Periods
+    # 1. Split Time Range into N Periods
     if games.empty:
         st.warning("Aucun match dans la plage sélectionnée.")
         return
@@ -985,16 +1155,17 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
     max_date = games['date_dt'].max()
     
     # If range is too small (e.g. 1 day), just show 1 period? 
-    # Or force 4 periods even if identical? Let's try to split by duration.
+    # Or force N periods even if identical? Let's try to split by duration.
+        
     total_duration = max_date - min_date
-    period_duration = total_duration / 4
+    period_duration = total_duration / num_periods
     
     periods = []
-    for i in range(4):
+    for i in range(num_periods):
         p_start = min_date + (period_duration * i)
         p_end = min_date + (period_duration * (i + 1))
         # Ensure last period catches everything up to max_date exactly (microseconds issue)
-        if i == 3: p_end = max_date 
+        if i == num_periods - 1: p_end = max_date 
         
         periods.append((p_start, p_end))
         
@@ -1041,7 +1212,7 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
         # Let's say: >= start AND <= end. 
         # But Period 0 end == Period 1 start.
         # Use: >= start AND < end (except last period <= end)
-        if i < 3:
+        if i < num_periods - 1:
             mask = (games['date_dt'] >= p_start) & (games['date_dt'] < p_end)
         else:
             mask = (games['date_dt'] >= p_start) & (games['date_dt'] <= p_end)
@@ -1085,7 +1256,7 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
         # Merge into Aggregator
         for _, row in df_std.iterrows():
             t = row['Team']
-            if t not in agg_standings: agg_standings[t] = {c: [0.0]*4 for c in cols_std_to_track}
+            if t not in agg_standings: agg_standings[t] = {c: [0.0]*num_periods for c in cols_std_to_track}
             
             for c in cols_std_to_track:
                 val = row.get(c, 0)
@@ -1109,7 +1280,7 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
              if name not in agg_goalies: 
                  agg_goalies[name] = {
                      'Team': row['Team'], # Static
-                     'Stats': {c: [0.0]*4 for c in cols_goal_track}
+                     'Stats': {c: [0.0]*num_periods for c in cols_goal_track}
                  }
                  
              for c in cols_goal_track:
@@ -1138,7 +1309,7 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
              if name not in agg_players:
                  agg_players[name] = {
                      'Team': row['Team_name'] if 'Team_name' in row else row.get('Team', ''),
-                     'Stats': {c: [0.0]*4 for c in cols_play_track}
+                     'Stats': {c: [0.0]*num_periods for c in cols_play_track}
                  }
              for c in cols_play_track:
                  val = row.get(c, 0)
@@ -1204,12 +1375,12 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
             return st.column_config.LineChartColumn(title, width="small", y_min=base_min, y_max=base_max)
 
     # helper
-    def make_spark_df(agg_data, col_map, scalar_cols=None):
+    def make_spark_df(agg_data, col_map, id_col_name='Équipe'):
         # agg_data: {Entity: {Col: [v1..v4]}} (Standings style) OR {Entity: {'Team': T, 'Stats': {Col: []}}} (Player style)
         rows = []
         for entity, data in agg_data.items():
             row = {}
-            row[col_map.get('Team', 'Équipe') if 'Team' in col_map else 'Nom'] = entity
+            row[id_col_name] = entity
             
             # Handle Structure diff
             if 'Stats' in data: # Player/Goalie
@@ -1221,16 +1392,6 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
             for c, vals in stats.items():
                 disp_col = col_map.get(c, c)
                 row[disp_col] = vals
-                
-            # Add Scalar Total/Avg if needed for sorting?
-            # User wants to SEE sparklines. But usually we sort by Total.
-            # Let's calculate a "Total" or "Current" for sorting purposes?
-            # Or just sort by the last value? Or sum?
-            # Let's simple sum the array for sorting for countable things, avg for ratios.
-            # For simplicity, we won't add extra sort columns unless requested, 
-            # we just rely on the name or let it be. 
-            # Actually, without a single number, sorting is hard in Streamlit DF.
-            # We will rely on default index sorting (Alphabetical) or pre-sort.
             
             rows.append(row)
         return pd.DataFrame(rows)
@@ -1238,14 +1399,18 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
     # --- STANDINGS TABLE ---
     if agg_standings:
         st.subheader("Classement")
-        df_evo_std = make_spark_df(agg_standings, std_map)
+        df_evo_std = make_spark_df(agg_standings, std_map, 'Équipe')
         
         # Sort? by PTS sum?
         # Let's add a hidden total for sorting
+        # Let's add a hidden total for sorting
         df_evo_std['__SortPTS'] = df_evo_std['PTS'].apply(sum)
-        df_evo_std['__SortPTSMJ'] = df_evo_std['PTS/MJ'].apply(lambda x: sum(x)/4) # Average of Avg
+        df_evo_std['__SortPTSMJ'] = df_evo_std['PTS/MJ'].apply(lambda x: sum(x)/num_periods) # Average of Avg
         
-        df_evo_std = df_evo_std.sort_values(by=['__SortPTS', '__SortPTSMJ'], ascending=False)
+        df_evo_std = df_evo_std.sort_values(by=['__SortPTS', '__SortPTSMJ'], ascending=False).reset_index(drop=True)
+        df_evo_std.index += 1
+        df_evo_std.index.name = "Rang"
+        df_evo_std.set_index("Équipe", append=True, inplace=True)
         
         # Config
         # All columns except Equipe are sparklines
@@ -1267,12 +1432,15 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
     if agg_goalies:
         st.subheader("Gardiens")
         g_map = {'Shots': 'Lancers', 'Name': 'Nom', 'Team': 'Équipe'}
-        df_evo_g = make_spark_df(agg_goalies, g_map)
+        df_evo_g = make_spark_df(agg_goalies, g_map, 'Nom')
         
         # Sort
         # Sort by MJ sum?
         df_evo_g['__MJ'] = df_evo_g['MJ'].apply(sum)
-        df_evo_g = df_evo_g.sort_values(by='__MJ', ascending=False)
+        df_evo_g = df_evo_g.sort_values(by='__MJ', ascending=False).reset_index(drop=True)
+        df_evo_g.index += 1
+        df_evo_g.index.name = "Rang"
+        df_evo_g.set_index("Nom", append=True, inplace=True)
 
         cols_cfg_g = {}
         for c in cols_goal_track:
@@ -1289,11 +1457,14 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
     if agg_players:
         st.subheader("Joueurs")
         p_map = {'Name': 'Nom', 'Team': 'Équipe'}
-        df_evo_p = make_spark_df(agg_players, p_map)
+        df_evo_p = make_spark_df(agg_players, p_map, 'Nom')
         
         # Sort by PTS sum
         df_evo_p['__PTS'] = df_evo_p['PTS'].apply(sum)
-        df_evo_p = df_evo_p.sort_values(by='__PTS', ascending=False)
+        df_evo_p = df_evo_p.sort_values(by='__PTS', ascending=False).reset_index(drop=True)
+        df_evo_p.index += 1
+        df_evo_p.index.name = "Rang"
+        df_evo_p.set_index("Nom", append=True, inplace=True)
         
         cols_cfg_p = {}
         for c in cols_play_track:
