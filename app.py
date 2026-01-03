@@ -560,6 +560,12 @@ def main():
     games = games[mask_date]
     
     
+    # Capture Global Context (Filtered by Date, but NOT by Team/Stats Mode)
+    games_global = games.copy()
+    valid_global_ids = games_global['game_id'].unique()
+    goals_global = goals[goals['game_id'].isin(valid_global_ids)]
+    penalties_global = penalties[penalties['game_id'].isin(valid_global_ids)]
+    
     if stats_mode == "Face-à-Face":
         if len(selected_teams) < 2:
             st.warning("Le mode Face-à-Face requiert au moins 2 équipes sélectionnées.")
@@ -626,14 +632,16 @@ def main():
 
     if view == "Tableau de bord":
         normalize = st.sidebar.checkbox("Normaliser par MJ", value=False)
-        render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, players, normalize)
+        render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, players, normalize, 
+                         games_global, goals_global, penalties_global)
     else:
         num_periods = st.sidebar.slider("Nombre de périodes", 1, 5, 4)
         render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, players, num_periods)
         
     conn.close()
 
-def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, players, normalize=False):
+def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, players, normalize=False,
+                     games_global=None, goals_global=None, penalties_global=None):
     # --- STANDINGS ---
     # Custom Toggle to keep Button on Right BUT Content Full Width
     if 'leg_standings' not in st.session_state: st.session_state.leg_standings = False
@@ -681,6 +689,12 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
     
     standings = calculate_standings(standings_games, standings_penalties)
     
+    # Define Renaming Map (English -> French)
+    col_rename_map = {
+        'Team': 'Équipe', 'GP': 'MJ', 'W': 'V', 'L': 'D', 'T': 'N',
+        'GF': 'BP', 'GA': 'BC', 'PP%': '%AN', 'PK%': '%DN', 'PIM': 'PUN'
+    }
+    
     # DISPLAY FILTERING
     # If "Globales" or "Face-à-Face", we usually only show the selected teams.
     # If "Un contre tous", we show selected teams AND their opponents (so, everyone in the standings_games).
@@ -692,10 +706,7 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
          standings.index += 1
          
          # RENAME COLUMNS FOR DISPLAY
-         standings = standings.rename(columns={
-             'Team': 'Équipe', 'GP': 'MJ', 'W': 'V', 'L': 'D', 'T': 'N',
-             'GF': 'BP', 'GA': 'BC', 'PP%': '%AN', 'PK%': '%DN', 'PIM': 'PUN'
-         })
+         standings = standings.rename(columns=col_rename_map)
          
          # Force Numeric Types (Fixes Left Alignment issue)
          numeric_cols = ['PTS', 'MJ', 'V', 'D', 'N', 'BP', 'BC', 'DIFF', 'PUN']
@@ -795,8 +806,45 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
         {'selector': 'td', 'props': [('text-align', 'center !important')]}
     ])
     
-    if std_pos: styler_standings = styler_standings.background_gradient(cmap=cmap_pos, subset=std_pos)
-    if std_neg: styler_standings = styler_standings.background_gradient(cmap=cmap_neg, subset=std_neg)
+    
+    # Calculate Global Standings for Heatmap Context
+    if games_global is not None:
+        st_global = calculate_standings(games_global, penalties_global)
+        if not st_global.empty:
+             # Rename Global to match French Schema for Min/Max lookup
+             # Explicitly ensure the map is available or define it here if needed
+             rename_map_local = {
+                 'Team': 'Équipe', 'GP': 'MJ', 'W': 'V', 'L': 'D', 'T': 'N',
+                 'GF': 'BP', 'GA': 'BC', 'PP%': '%AN', 'PK%': '%DN', 'PIM': 'PUN'
+             }
+             st_global = st_global.rename(columns=rename_map_local)
+             
+             # Robust calculation
+             if 'MJ' in st_global.columns:
+                 # Always calculate PTS/MJ as it is in the main table default
+                 st_global['PTS/MJ'] = st_global.apply(lambda r: round(r['PTS']/r['MJ'], 3) if r['MJ']>0 else 0, axis=1)
+
+                 if normalize:
+                     for c, new_c in norm_cols_map.items():
+                        # Verify source column exists (e.g. 'V', 'D')
+                        if c in st_global.columns:
+                            st_global[new_c] = st_global.apply(lambda r: r[c]/r['MJ'] if r['MJ'] > 0 else 0, axis=1)
+
+             
+    # Apply gradients with explicit vmin/vmax
+    for col in std_pos:
+        vmin, vmax = None, None
+        if games_global is not None and not st_global.empty and col in st_global.columns:
+             vmin = st_global[col].min()
+             vmax = st_global[col].max()
+        styler_standings = styler_standings.background_gradient(cmap=cmap_pos, subset=[col], vmin=vmin, vmax=vmax)
+
+    for col in std_neg:
+        vmin, vmax = None, None
+        if games_global is not None and not st_global.empty and col in st_global.columns:
+             vmin = st_global[col].min()
+             vmax = st_global[col].max()
+        styler_standings = styler_standings.background_gradient(cmap=cmap_neg, subset=[col], vmin=vmin, vmax=vmax)
     
     st.dataframe(
         styler_standings, 
@@ -910,8 +958,38 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
         g_pos = [c for c in cols_display if get_column_type(c) == 'pos']
         g_neg = [c for c in cols_display if get_column_type(c) == 'neg']
         
-        if g_pos: styler_gdf = styler_gdf.background_gradient(cmap=cmap_pos, subset=g_pos)
-        if g_neg: styler_gdf = styler_gdf.background_gradient(cmap=cmap_neg, subset=g_neg)
+        g_pos = [c for c in cols_display if get_column_type(c) == 'pos']
+        g_neg = [c for c in cols_display if get_column_type(c) == 'neg']
+        
+        # Global Context for Goalies
+        df_goal_global = pd.DataFrame()
+        if games_global is not None:
+             g_ids_global = games_global['game_id'].unique()
+             df_goal_global = calculate_goalie_stats(conn, g_ids_global)
+             
+             if not df_goal_global.empty:
+                 # Rename Global to match French Schema
+                 df_goal_global = df_goal_global.rename(columns={'Name': 'Nom', 'Team': 'Équipe', 'Shots': 'Lancers'})
+             
+                 if normalize:
+                     for c, new_c in g_norm_map.items():
+                         # Verify column exists
+                         if c in df_goal_global.columns:
+                             df_goal_global[new_c] = df_goal_global.apply(lambda r: r[c]/r['MJ'] if r['MJ'] > 0 else 0, axis=1)
+
+        for col in g_pos:
+            vmin, vmax = None, None
+            if not df_goal_global.empty and col in df_goal_global.columns:
+                 vmin = df_goal_global[col].min()
+                 vmax = df_goal_global[col].max()
+            styler_gdf = styler_gdf.background_gradient(cmap=cmap_pos, subset=[col], vmin=vmin, vmax=vmax)
+            
+        for col in g_neg:
+            vmin, vmax = None, None
+            if not df_goal_global.empty and col in df_goal_global.columns:
+                 vmin = df_goal_global[col].min()
+                 vmax = df_goal_global[col].max()
+            styler_gdf = styler_gdf.background_gradient(cmap=cmap_neg, subset=[col], vmin=vmin, vmax=vmax)
         
         st.dataframe(
             styler_gdf, 
@@ -1109,7 +1187,8 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
         # It has column 'Équipe' now, not 'Team'.
         
         # Let's re-find the row using FRENCH column names
-        t_row = standings[standings['Équipe'] == selected_team]
+        # Let's re-find the row using FRENCH column names (Équipe is in Index now)
+        t_row = standings[standings.index.get_level_values('Équipe') == selected_team]
         if not t_row.empty:
             team_row = t_row.iloc[0]
             
