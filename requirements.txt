@@ -3,4 +3,4 @@ requests
 streamlit
 pandas
 pypdf
-matplotlib
+matplotlib 

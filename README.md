@@ -5,7 +5,7 @@ Automated dashboard for tracking stats in the "Junior C Mixte" league.
 ## Features
 - **Auto-Download**: Fetches ONLY final game sheets from Spordle.
 - **Data Processing**: Parses PDFs to extract goals, assists, penalties, and goalkeeper stats.
-- **Interactive Dashboard**: Streamlit app with date filtering, player comparisons, and standings.
+- **Interactive Dashboard**: Streamlit app with date filtering, player comparisons, and standings..
 
 ## Setup
 

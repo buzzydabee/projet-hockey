@@ -760,9 +760,10 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
         from matplotlib.colors import LinearSegmentedColormap
         # Streamlit dark bg is approx #0e1117. 
         # Positive Stats (PTS, V): Low=Red, High=Green
-        cmap_pos = LinearSegmentedColormap.from_list("custom_pos", ["#4d0000", "#0e1117", "#004d00"])
+        # Use brighter ends for visibility: #990000 (Red) and #009900 (Green)
+        cmap_pos = LinearSegmentedColormap.from_list("custom_pos", ["#800000", "#0e1117", "#008000"])
         # Negative Stats (PUN, D): Low=Green, High=Red
-        cmap_neg = LinearSegmentedColormap.from_list("custom_neg", ["#004d00", "#0e1117", "#4d0000"])
+        cmap_neg = LinearSegmentedColormap.from_list("custom_neg", ["#008000", "#0e1117", "#800000"])
     except:
         # Fallback if matplotlib not found (unlikely)
         cmap_pos = 'RdYlGn'
