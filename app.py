@@ -636,7 +636,8 @@ def main():
                          games_global, goals_global, penalties_global)
     else:
         num_periods = st.sidebar.slider("Nombre de périodes", 1, 5, 4)
-        render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, players, num_periods)
+        min_mj = st.sidebar.number_input("Min. Parties Jouées", min_value=1, value=1)
+        render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, players, num_periods, min_mj)
         
     conn.close()
 
@@ -1275,9 +1276,9 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
              else:
                  st.info("Aucun but enregistré.")
 
-def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, players, num_periods=4):
+def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, players, num_periods=4, min_mj=1):
     st.header("📈 Évolution de la Saison")
-    st.caption(f"Les indicateurs sont calculés sur {num_periods} périodes de durée égale, basées sur la plage de dates sélectionnée.")
+    st.caption("Les indicateurs sont calculés sur 4 périodes de durée égale, basées sur la plage de dates sélectionnée.")
 
     # 1. Split Time Range into N Periods
     if games.empty:
@@ -1551,7 +1552,8 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
                 
             for c, vals in stats.items():
                 disp_col = col_map.get(c, c)
-                row[disp_col] = vals
+                # REVERSE order: Index 0 = Newest Period (for sorting)
+                row[disp_col] = vals[::-1] if isinstance(vals, list) else vals
             
             rows.append(row)
         return pd.DataFrame(rows)
@@ -1559,6 +1561,7 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
     # --- STANDINGS TABLE ---
     if agg_standings:
         st.subheader("Classement")
+        st.caption("⬅️ **Gauche** : Plus Récent | **Droite** ➡️ : Plus Ancien (Le tri par clic se fait sur la valeur la plus récente)")
         df_evo_std = make_spark_df(agg_standings, std_map, 'Équipe')
         
         # Sort by PTS sum
@@ -1566,8 +1569,8 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
         col_pts_mj = std_map.get('PTS/MJ', 'PTS/MJ')
         
         # Calculate Sort Keys
-        # Sort by the LAST period value (most recent trend)
-        df_evo_std['__SortPTS'] = df_evo_std[col_pts].apply(lambda x: x[-1] if len(x) > 0 else 0)
+        # Sort by the NEWEST period value (Index 0 due to reversal)
+        df_evo_std['__SortPTS'] = df_evo_std[col_pts].apply(lambda x: x[0] if len(x) > 0 else 0)
         # Note: If PTS is mapped to PTS/MJ, do we sort by sum of PTS/MJ? 
         # Yes, high average -> high rank usually. 
         # But wait, sum of PTS/MJ across 4 periods is a weird metric.
@@ -1600,6 +1603,15 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
 
     # --- GOALIES ---
     if agg_goalies:
+        # FILTER BY MIN MJ
+        # agg_goalies = {Name: {'Stats': {Col: [list]}, 'Team': T}}
+        # We need to verify if MJ exists in stats. Assuming it does as per standard calculator.
+        agg_goalies = {
+            k: v for k, v in agg_goalies.items() 
+            if sum(v['Stats'].get('MJ', [0])) >= min_mj
+        }
+
+    if agg_goalies:
         st.subheader("Gardiens")
         g_map = {
             'Shots': 'Lancers/MJ', 'Name': 'Nom', 'Team': 'Équipe',
@@ -1609,8 +1621,8 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
         df_evo_g = make_spark_df(agg_goalies, g_map, 'Nom')
         
         # Sort
-        # Sort by MJ in LAST period
-        df_evo_g['__MJ'] = df_evo_g['MJ'].apply(lambda x: x[-1] if len(x) > 0 else 0)
+        # Sort by MJ in NEWEST period
+        df_evo_g['__MJ'] = df_evo_g['MJ'].apply(lambda x: x[0] if len(x) > 0 else 0)
         df_evo_g = df_evo_g.sort_values(by='__MJ', ascending=False).reset_index(drop=True)
         df_evo_g.index += 1
         df_evo_g.index.name = "Rang"
@@ -1629,6 +1641,13 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
 
     # --- PLAYERS ---
     if agg_players:
+        # FILTER BY MIN MJ
+        agg_players = {
+            k: v for k, v in agg_players.items() 
+            if sum(v['Stats'].get('MJ', v['Stats'].get('GP', [0]))) >= min_mj
+        }
+
+    if agg_players:
         st.subheader("Joueurs")
         p_map = {
             'Name': 'Nom', 'Team': 'Équipe',
@@ -1639,9 +1658,9 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
         }
         df_evo_p = make_spark_df(agg_players, p_map, 'Nom')
         
-        # Sort by PTS sum (LAST period)
+        # Sort by PTS sum (NEWEST period)
         col_pts_p = p_map.get('PTS', 'PTS')
-        df_evo_p['__PTS'] = df_evo_p[col_pts_p].apply(lambda x: x[-1] if len(x) > 0 else 0)
+        df_evo_p['__PTS'] = df_evo_p[col_pts_p].apply(lambda x: x[0] if len(x) > 0 else 0)
         df_evo_p = df_evo_p.sort_values(by='__PTS', ascending=False).reset_index(drop=True)
         df_evo_p.index += 1
         df_evo_p.index.name = "Rang"
