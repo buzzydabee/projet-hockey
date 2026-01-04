@@ -853,6 +853,9 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
     styler_standings = standings[cols_data].style.set_properties(
         subset=cols_data, 
         **{'text-align': 'center'}
+    ).set_properties(
+        subset=['Équipe'],
+        **{'color': '#ffffff', 'font-weight': 'bold'}
     ).set_table_styles([
         {'selector': 'th', 'props': [('text-align', 'center !important')]},
         {'selector': 'td', 'props': [('text-align', 'center !important')]}
@@ -1015,6 +1018,9 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             styler_gdf = gdf[cols_display].style.set_properties(
                 subset=list(set(cols_display) & set(stats_cols_g)), # Ensure intersection
                 **{'text-align': 'center'}
+            ).set_properties(
+                subset=['Équipe'],
+                **{'color': '#a0a0a0'}
             ).set_table_styles([
                 {'selector': 'th', 'props': [('text-align', 'center !important')]},
                 {'selector': 'td', 'props': [('text-align', 'center !important')]}
@@ -1194,6 +1200,9 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             styler_pdf = p_df[cols_display_p].style.set_properties(
                 subset=list(set(cols_display_p) & set(stats_cols_p)),
                 **{'text-align': 'center'}
+            ).set_properties(
+                subset=['Équipe'],
+                **{'color': '#a0a0a0'}
             ).set_table_styles([
                 {'selector': 'th', 'props': [('text-align', 'center !important')]},
                 {'selector': 'td', 'props': [('text-align', 'center !important')]}
