@@ -1566,7 +1566,8 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
         col_pts_mj = std_map.get('PTS/MJ', 'PTS/MJ')
         
         # Calculate Sort Keys
-        df_evo_std['__SortPTS'] = df_evo_std[col_pts].apply(sum)
+        # Sort by the LAST period value (most recent trend)
+        df_evo_std['__SortPTS'] = df_evo_std[col_pts].apply(lambda x: x[-1] if len(x) > 0 else 0)
         # Note: If PTS is mapped to PTS/MJ, do we sort by sum of PTS/MJ? 
         # Yes, high average -> high rank usually. 
         # But wait, sum of PTS/MJ across 4 periods is a weird metric.
@@ -1608,8 +1609,8 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
         df_evo_g = make_spark_df(agg_goalies, g_map, 'Nom')
         
         # Sort
-        # Sort by MJ sum?
-        df_evo_g['__MJ'] = df_evo_g['MJ'].apply(sum)
+        # Sort by MJ in LAST period
+        df_evo_g['__MJ'] = df_evo_g['MJ'].apply(lambda x: x[-1] if len(x) > 0 else 0)
         df_evo_g = df_evo_g.sort_values(by='__MJ', ascending=False).reset_index(drop=True)
         df_evo_g.index += 1
         df_evo_g.index.name = "Rang"
@@ -1638,9 +1639,9 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
         }
         df_evo_p = make_spark_df(agg_players, p_map, 'Nom')
         
-        # Sort by PTS sum
+        # Sort by PTS sum (LAST period)
         col_pts_p = p_map.get('PTS', 'PTS')
-        df_evo_p['__PTS'] = df_evo_p[col_pts_p].apply(sum)
+        df_evo_p['__PTS'] = df_evo_p[col_pts_p].apply(lambda x: x[-1] if len(x) > 0 else 0)
         df_evo_p = df_evo_p.sort_values(by='__PTS', ascending=False).reset_index(drop=True)
         df_evo_p.index += 1
         df_evo_p.index.name = "Rang"
