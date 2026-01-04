@@ -886,7 +886,7 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
         st.header("Statistiques Gardiens")
     with c_g_leg:
         if st.button("Légende 📝", key="btn_leg_goalies"):
-            st.session_state.leg_goalies = not st.session_state.leg_leg_goalies
+            st.session_state.leg_goalies = not st.session_state.leg_goalies
             
     if st.session_state.leg_goalies:
         with st.container():
