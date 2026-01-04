@@ -839,11 +839,13 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
     # Headers need 'th' selector.
     
     # Move Team to Index for pinning
-    standings.index.name = "Rang"
-    standings.set_index("Équipe", append=True, inplace=True)
     
-    # Filter cols_to_show to exclude Équipe since it is in index
-    cols_data = [c for c in cols_to_show if c != 'Équipe']
+    standings.index.name = "Rang"
+    # standings.set_index("Équipe", append=True, inplace=True) # REMOVED to allow styling on Équipe column
+    
+    # Filter cols_to_show to exclude Équipe since it is in index -> KEEP IT
+    cols_data = cols_to_show
+
     
     # Apply Heatmap
     # Split cols_data into pos and neg
