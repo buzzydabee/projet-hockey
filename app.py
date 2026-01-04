@@ -849,7 +849,7 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
     
     st.dataframe(
         styler_standings, 
-        use_container_width=True,
+        width="stretch",
         column_config={
 
             "PTS/MJ": st.column_config.ProgressColumn(
@@ -994,7 +994,7 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
         
         st.dataframe(
             styler_gdf, 
-            use_container_width=True,
+            width="stretch",
             column_config={
                  "%Arr": st.column_config.NumberColumn(
                     "%Arr",
@@ -1213,11 +1213,11 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             st.subheader("Journal de Match")
             # Show relevant columns
             log_cols = ['date', 'home', 'visitor', 'final_score_home', 'final_score_visitor', 'arena']
-            st.dataframe(games_filtered[log_cols].sort_values(by='date', ascending=False), use_container_width=True)
+            st.dataframe(games_filtered[log_cols].sort_values(by='date', ascending=False), width="stretch")
 
         with tab2:
             st.subheader("Punitions")
-            st.dataframe(penalties_filtered, use_container_width=True)
+            st.dataframe(penalties_filtered, width="stretch")
             
         with tab3:
              st.dataframe(goals_filtered)
@@ -1503,7 +1503,7 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
         st.dataframe(
             df_evo_std.drop(columns=['__SortPTS', '__SortPTSMJ']),
             column_config=cols_cfg,
-            use_container_width=True
+            width="stretch"
         )
     else:
         st.info("Pas de données de classement.")
@@ -1530,7 +1530,7 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
         st.dataframe(
             df_evo_g.drop(columns=['__MJ']), 
             column_config=cols_cfg_g,
-            use_container_width=True
+            width="stretch"
         )
 
     # --- PLAYERS ---
@@ -1554,7 +1554,7 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
         st.dataframe(
             df_evo_p.drop(columns=['__PTS']).head(100), # Limit to top 100 to avoid lag
             column_config=cols_cfg_p,
-            use_container_width=True
+            width="stretch"
         )
 
 if __name__ == "__main__":
