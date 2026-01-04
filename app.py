@@ -802,7 +802,7 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
     # Positive (High=Green): PTS, V, N, FJ, BP, DIFF, %AN, %DN, BL, %Arr, B, A, MA, ...
     # Negative (High=Red): D, BC, PUN, PEM, Moy
     
-    pos_roots = ['PTS', 'V', 'N', 'FJ', 'BP', 'DIFF', '%AN', '%DN', 'BL', '%Arr', 'B', 'A', 'MA', 
+    pos_roots = ['PTS', 'V', 'N', 'FJ', 'BP', 'DIFF', '%AN', '%DN', '%AN (Rec)', '%DN (Rec)', 'BL', '%Arr', 'B', 'A', 'MA', 
                  'BAN', 'AAN', 'PTS_AN', 'BIN', 'AID', 'PTS_IN', 'BG', 'BE']
     neg_roots = ['D', 'BC', 'PUN', 'PEM', 'Moy']
     
