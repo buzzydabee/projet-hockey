@@ -1338,11 +1338,19 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
             t = row['Team']
             if t not in agg_standings: agg_standings[t] = {c: [0.0]*num_periods for c in cols_std_to_track}
             
+            mj = float(row.get('GP', 0))
+            
+            # Cols to normalize by MJ
+            cols_std_norm = ['PTS', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'DIFF', 'PIM']
+            
             for c in cols_std_to_track:
                 val = row.get(c, 0)
-                # Ensure numeric
                 try: val = float(val)
                 except: val = 0.0
+                
+                if c in cols_std_norm and mj > 0:
+                    val = round(val / mj, 2)
+                    
                 agg_standings[t][c][i] = val
                 
         # --- CALC GOALIES ---
@@ -1367,6 +1375,15 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
                  val = row.get(c, 0)
                  try: val = float(val)
                  except: val = 0.0
+                 
+                 # Goalies: Normalize by MJ
+                 # Cols to normalize
+                 cols_goal_norm = ['MA', 'V', 'D', 'N', 'BL', 'BC', 'Shots']
+                 mj = float(row.get('MJ', 0))
+                 
+                 if c in cols_goal_norm and mj > 0:
+                     val = round(val / mj, 2)
+
                  agg_goalies[name]['Stats'][c][i] = val
 
         # --- CALC PLAYERS ---
@@ -1391,10 +1408,19 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
                      'Team': row['Team_name'] if 'Team_name' in row else row.get('Team', ''),
                      'Stats': {c: [0.0]*num_periods for c in cols_play_track}
                  }
+             # Player MJ for this period
+             mj = float(row.get('MJ', 0))
+             
+             cols_play_norm = ['B', 'A', 'PTS', 'PEM', 'PUN', 'BAN', 'AAN', 'PTS_AN', 'BIN', 'AID', 'PTS_IN', 'BG', 'BE']
+
              for c in cols_play_track:
                  val = row.get(c, 0)
                  try: val = float(val)
                  except: val = 0.0
+                 
+                 if c in cols_play_norm and mj > 0:
+                     val = round(val / mj, 2)
+                     
                  agg_players[name]['Stats'][c][i] = val
 
     # 3. BUILD AND DISPLAY TABLES
