@@ -1179,8 +1179,15 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
         
         # Filter Data
         games_filtered = games[(games['home'] == selected_team) | (games['visitor'] == selected_team)]
+        
+        # Prepare Dates map
+        game_dates = games[['game_id', 'date_dt']]
+        
         goals_filtered = goals[goals['team_name'] == selected_team]
+        goals_filtered = goals_filtered.merge(game_dates, on='game_id', how='left')
+        
         penalties_filtered = penalties[penalties['team_name'] == selected_team]
+        penalties_filtered = penalties_filtered.merge(game_dates, on='game_id', how='left')
         
         # Get standing row
         # Note: 'standings' DF now has French columns if calculated above.
@@ -1223,10 +1230,50 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
 
         with tab2:
             st.subheader("Punitions")
-            st.dataframe(penalties_filtered, width="stretch")
+            # Reorder: Date first, remove IDs
+            cols_p = ['date_dt'] + [c for c in penalties_filtered.columns if c not in ['date_dt', 'game_id', 'team_id']]
+            st.dataframe(
+                penalties_filtered[cols_p].sort_values(by='date_dt', ascending=False), 
+                width="stretch",
+                column_config={
+                    "date_dt": st.column_config.DateColumn("Date", format="DD MMMM YYYY")
+                }
+            )
             
         with tab3:
-             st.dataframe(goals_filtered)
+             # Resolve Player Names
+             cols_g_show = ['date_dt', 'Buteur', 'Passeur 1', 'Passeur 2', 'period', 'time']
+             
+             if not goals_filtered.empty:
+                 # Get Team ID (assume consistent for selected_team)
+                 current_tid = goals_filtered.iloc[0]['team_id']
+                 
+                 # Filter players
+                 t_players = players[players['team_id'] == current_tid]
+                 # Map: Jersey(str) -> Name
+                 p_map = dict(zip(t_players['jersey_number'].astype(str).str.strip(), t_players['player_name']))
+                 
+                 def resolve_name(j):
+                     if pd.isna(j) or j == "": return ""
+                     return p_map.get(str(j).strip(), str(j))
+
+                 goals_filtered['Buteur'] = goals_filtered['player_jersey'].apply(resolve_name)
+                 goals_filtered['Passeur 1'] = goals_filtered['assist1_jersey'].apply(resolve_name)
+                 goals_filtered['Passeur 2'] = goals_filtered['assist2_jersey'].apply(resolve_name)
+             else:
+                 # Empty case
+                 cols_g_show = [] # Clean handling if empty
+             
+             if not goals_filtered.empty:
+                 st.dataframe(
+                    goals_filtered[cols_g_show].sort_values(by='date_dt', ascending=False),
+                    width="stretch",
+                    column_config={
+                        "date_dt": st.column_config.DateColumn("Date", format="DD MMMM YYYY")
+                    }
+                 )
+             else:
+                 st.info("Aucun but enregistré.")
 
 def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, players, num_periods=4):
     st.header("📈 Évolution de la Saison")
