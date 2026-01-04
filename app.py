@@ -844,7 +844,7 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
     
     # Calculate Global Standings for Heatmap Context
     if games_global is not None:
-        st_global = calculate_standings(games_global, penalties_global)
+        st_global = calculate_standings(games_global, penalties_global, goals_global)
         if not st_global.empty:
              # Rename Global to match French Schema for Min/Max lookup
              # Explicitly ensure the map is available or define it here if needed
