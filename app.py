@@ -714,13 +714,14 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
     # Logic: Show standings for games involving ANY of the selected teams.
     standings_games = games
     standings_penalties = penalties
+    standings_goals = goals
     
     # Only filter if we haven't selected ALL teams (optimization)
     # BUT in "Un contre tous", games is already filtered, so we can pass it directly.
     # The optimization below is mainly for Global mode.
     # If stats_mode != 'Un contre tous' and len...
     
-    standings = calculate_standings(standings_games, standings_penalties)
+    standings = calculate_standings(standings_games, standings_penalties, standings_goals)
     
     # Define Renaming Map (English -> French)
     col_rename_map = {
