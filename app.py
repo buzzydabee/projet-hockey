@@ -80,7 +80,7 @@ def calculate_standings(games, penalties, goals):
             'Team': team, 'GP': len(t_games), 'W': 0, 'L': 0, 'T': 0, 
             'PTS': 0, 'GF': 0, 'GA': 0, 'FJ': 0,
             'PP_G': 0, 'PP_Att': 0, 'PK_Kills': 0, 'PK_Att': 0,
-            'PP_G_Rec': 0, 'PP_Att_Rec': 0
+            'PP_G_Rec': 0, 'PP_Att_Rec': 0, 'PK_Kills_Rec': 0, 'PK_Att_Rec': 0
         }
         
         if len(t_games) == 0:
@@ -130,13 +130,27 @@ def calculate_standings(games, penalties, goals):
             rec_stats = reconstructor.reconstruct_game_stats(g_id, g_goals, g_pens, hid, vid)
             
             # Add to Team Stats
+            # Add to Team Stats
             if is_home:
+                # My PP (Home)
                 s['PP_G_Rec'] += rec_stats['pp_g_home']
                 s['PP_Att_Rec'] += rec_stats['pp_att_home']
-                # PK? User asked for PP comparison mainly, but logic is symetric
+                
+                # My PK (Opponent PP Visitor)
+                opp_g_rec = rec_stats['pp_g_vis']
+                opp_att_rec = rec_stats['pp_att_vis']
+                s['PK_Att_Rec'] += opp_att_rec
+                s['PK_Kills_Rec'] += (opp_att_rec - opp_g_rec)
             else:
+                # My PP (Visitor)
                 s['PP_G_Rec'] += rec_stats['pp_g_vis']
                 s['PP_Att_Rec'] += rec_stats['pp_att_vis']
+                
+                # My PK (Opponent PP Home)
+                opp_g_rec = rec_stats['pp_g_home']
+                opp_att_rec = rec_stats['pp_att_home']
+                s['PK_Att_Rec'] += opp_att_rec
+                s['PK_Kills_Rec'] += (opp_att_rec - opp_g_rec)
 
         # Points Formula: W*2 + T*1 + FJ
         s['PTS'] = (s['W'] * 2) + (s['T'] * 1) + s['FJ']
@@ -147,6 +161,7 @@ def calculate_standings(games, penalties, goals):
         
         # Rec Percentages
         s['PP% Rec'] = round((s['PP_G_Rec'] / s['PP_Att_Rec'] * 100) if s['PP_Att_Rec'] > 0 else 0, 1)
+        s['PK% Rec'] = round((s['PK_Kills_Rec'] / s['PK_Att_Rec'] * 100) if s['PK_Att_Rec'] > 0 else 0, 1)
         
         # PTS/MJ
         s['PTS/MJ'] = round((s['PTS'] / s['GP']) if s['GP'] > 0 else 0, 3)
@@ -155,12 +170,13 @@ def calculate_standings(games, penalties, goals):
         s['PP'] = f"{s['PP_G']}/{s['PP_Att']}"
         s['PP (Rec)'] = f"{s['PP_G_Rec']}/{s['PP_Att_Rec']}"
         s['PK'] = f"{s['PK_Kills']}/{s['PK_Att']}"
+        s['PK (Rec)'] = f"{s['PK_Kills_Rec']}/{s['PK_Att_Rec']}"
         s['PIM'] = pim
         s['DIFF'] = s['GF'] - s['GA']
         
         stats.append(s)
         
-    cols_to_show = ['Team', 'PTS/MJ', 'PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'DIFF', 'PP%', 'PP% Rec', 'PK%', 'PIM']
+    cols_to_show = ['Team', 'PTS/MJ', 'PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'DIFF', 'PP%', 'PP% Rec', 'PK%', 'PK% Rec', 'PIM']
     
     # Return empty if needed
     if not stats:
@@ -180,7 +196,7 @@ def calculate_standings(games, penalties, goals):
     
     if not selected_teams:
         st.warning("Please select at least one team to view stats.")
-        cols_to_show = ['Team', 'PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'PP%', 'PK%', 'PIM']
+        cols_to_show = ['Team', 'PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'PP%', 'PP% Rec', 'PK%', 'PK% Rec', 'PIM']
         st.dataframe(pd.DataFrame(columns=cols_to_show), use_container_width=True)
     else:
         # Filter for Standings based on SELECTED TEAMS
@@ -207,7 +223,7 @@ def calculate_standings(games, penalties, goals):
         if not standings.empty:
              standings = standings[standings['Team'].isin(selected_teams)]
     
-        cols_to_show = ['Team', 'PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'PP%', 'PP% Rec', 'PK%', 'PIM']  # Simplified view
+        cols_to_show = ['Team', 'PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'PP%', 'PP% Rec', 'PK%', 'PK% Rec', 'PIM']  # Simplified view
         st.dataframe(standings[cols_to_show], use_container_width=True)
 
 def parse_time_to_seconds(period, time_str):
@@ -726,7 +742,8 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
     # Define Renaming Map (English -> French)
     col_rename_map = {
         'Team': 'Équipe', 'GP': 'MJ', 'W': 'V', 'L': 'D', 'T': 'N',
-        'GF': 'BP', 'GA': 'BC', 'PP%': '%AN', 'PK%': '%DN', 'PIM': 'PUN'
+        'GF': 'BP', 'GA': 'BC', 'PP%': '%AN', 'PK%': '%DN', 'PIM': 'PUN',
+        'PP% Rec': '%AN (Rec)', 'PK% Rec': '%DN (Rec)'
     }
     
     # DISPLAY FILTERING
@@ -743,7 +760,7 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
          standings = standings.rename(columns=col_rename_map)
          
          # Force Numeric Types (Fixes Left Alignment issue)
-         numeric_cols = ['PTS', 'MJ', 'V', 'D', 'N', 'BP', 'BC', 'DIFF', 'PUN']
+         numeric_cols = ['PTS', 'MJ', 'V', 'D', 'N', 'BP', 'BC', 'DIFF', 'PUN', '%AN (Rec)', '%DN (Rec)']
          for c in numeric_cols:
              if c in standings.columns:
                  standings[c] = pd.to_numeric(standings[c], errors='coerce').fillna(0)
@@ -753,9 +770,9 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
          standings.index += 1
     else:
          # Create empty with correct columns to avoid KeyError
-         standings = pd.DataFrame(columns=['Équipe', 'PTS/MJ', 'PTS', 'MJ', 'V', 'D', 'N', 'FJ', 'BP', 'BC', 'DIFF', '%AN', '%DN', 'PUN'])
+         standings = pd.DataFrame(columns=['Équipe', 'PTS/MJ', 'PTS', 'MJ', 'V', 'D', 'N', 'FJ', 'BP', 'BC', 'DIFF', '%AN', '%AN (Rec)', '%DN', '%DN (Rec)', 'PUN'])
 
-    cols_to_show = ['Équipe', 'PTS/MJ', 'PTS', 'MJ', 'V', 'D', 'N', 'FJ', 'BP', 'BC', 'DIFF', '%AN', '%DN', 'PUN']
+    cols_to_show = ['Équipe', 'PTS/MJ', 'PTS', 'MJ', 'V', 'D', 'N', 'FJ', 'BP', 'BC', 'DIFF', '%AN', '%AN (Rec)', '%DN', '%DN (Rec)', 'PUN']
     
     # Normalization Logic
     if normalize:
@@ -900,10 +917,19 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                 "%AN",
                 format="%.1f%%"
             ),
+             "%AN (Rec)": st.column_config.NumberColumn(
+                "%AN (Rec)",
+                format="%.1f%%"
+            ),
             "%DN": st.column_config.NumberColumn(
                 "%DN",
                 format="%.1f%%"
             ),
+             "%DN (Rec)": st.column_config.NumberColumn(
+                "%DN (Rec)",
+                format="%.1f%%"
+            ),
+
             # Add formats for normalized cols (defaults to %.2f usually but let's be explicit if needed or rely on default)
             **({c: st.column_config.NumberColumn(format="%.2f") for c in cols_to_show if '/MJ' in c} if normalize else {})
         }
@@ -1367,12 +1393,12 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
     # We must calculate PP% for the period, then store that value.
     # So we prefer to store the FINISHED stat value for the period.
     
-    cols_std_to_track = ['PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'DIFF', 'PP%', 'PK%', 'PIM', 'PP% Rec']
+    cols_std_to_track = ['PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'DIFF', 'PP%', 'PP% Rec', 'PK%', 'PK% Rec', 'PIM']
     # Mapping to French for Display
     std_map = {
         'Team': 'Équipe', 'GP': 'MJ', 'W': 'V/MJ', 'L': 'D/MJ', 'T': 'N/MJ',
         'GF': 'BP/MJ', 'GA': 'BC/MJ', 'PP%': '%AN', 'PK%': '%DN', 'PIM': 'PUN/MJ',
-        'PTS': 'PTS/MJ', 'FJ': 'FJ/MJ', 'DIFF': 'DIFF/MJ', 'PP% Rec': '%AN (Rec)'
+        'PTS': 'PTS/MJ', 'FJ': 'FJ/MJ', 'DIFF': 'DIFF/MJ', 'PP% Rec': '%AN (Rec)', 'PK% Rec': '%DN (Rec)'
     }
     
     
