@@ -630,19 +630,21 @@ def main():
     # --- VIEWS ---
     view = st.sidebar.radio("Vue", ["Tableau de bord", "Évolution"], index=0)
 
+    # Common Filter
+    min_mj = st.sidebar.number_input("Min. Parties Jouées", min_value=1, value=1)
+
     if view == "Tableau de bord":
         normalize = st.sidebar.checkbox("Normaliser par MJ", value=False)
         render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, players, normalize, 
-                         games_global, goals_global, penalties_global)
+                         games_global, goals_global, penalties_global, min_mj)
     else:
         num_periods = st.sidebar.slider("Nombre de périodes", 1, 5, 4)
-        min_mj = st.sidebar.number_input("Min. Parties Jouées", min_value=1, value=1)
         render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, players, num_periods, min_mj)
         
     conn.close()
 
 def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, players, normalize=False,
-                     games_global=None, goals_global=None, penalties_global=None):
+                     games_global=None, goals_global=None, penalties_global=None, min_mj=1):
     # --- STANDINGS ---
     # Custom Toggle to keep Button on Right BUT Content Full Width
     if 'leg_standings' not in st.session_state: st.session_state.leg_standings = False
@@ -884,7 +886,7 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
         st.header("Statistiques Gardiens")
     with c_g_leg:
         if st.button("Légende 📝", key="btn_leg_goalies"):
-            st.session_state.leg_goalies = not st.session_state.leg_goalies
+            st.session_state.leg_goalies = not st.session_state.leg_leg_goalies
             
     if st.session_state.leg_goalies:
         with st.container():
@@ -906,112 +908,113 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
     # Calculate for filtered game IDs
     valid_game_ids = games['game_id'].unique()
     gdf = calculate_goalie_stats(conn, valid_game_ids)
-    
-    # Filter Goalies by Team Selection
-    if not gdf.empty:
+    # FILTER MIN MJ
+    gdf = gdf[gdf['MJ'] >= min_mj]
+
+    if gdf.empty:
+        st.info("Aucune donnée de gardien.")
+    else:
+        # Filter Goalies by Team Selection
         if stats_mode != "Un contre tous":
             gdf = gdf[gdf['Team'].isin(selected_teams)]
+        
+        if not gdf.empty:
+            gdf = gdf.sort_values(by=['Moy', 'MJ'], ascending=[True, False]).reset_index(drop=True)
+            gdf.index += 1
+            
+            # Rename Cols
+            gdf = gdf.rename(columns={'Name': 'Nom', 'Team': 'Équipe', 'Shots': 'Lancers'})
+            
+            cols = ['Nom', 'Équipe', 'MJ', 'MA', 'V', 'D', 'N', 'BL', 'BC', 'Lancers', 'Moy', '%Arr', 'TG_str']
+            
+            if normalize:
+                # Map
+                g_norm_map = {
+                    'MA': 'MA/MJ', 'V': 'V/MJ', 'D': 'D/MJ', 'N': 'N/MJ',
+                    'BL': 'BL/MJ', 'BC': 'BC/MJ', 'Lancers': 'Lancers/MJ'
+                }
+                for col, new_col in g_norm_map.items():
+                    gdf[new_col] = gdf.apply(lambda r: r[col]/r['MJ'] if r['MJ'] > 0 else 0, axis=1)
+                    
+                    
+                norm_order = list(g_norm_map.values())
+                orig_order = [c for c in cols if c not in ['Nom', 'Équipe', 'MJ']]
+                
+                # New request: MJ first
+                cols = ['Nom', 'Équipe', 'MJ'] + norm_order + orig_order
+            
+            # STYLING
+            # Center stats columns (Skip Nom, Team)
+            stats_cols_g = cols[2:] 
+            
+            # Pin Nom
+            gdf.index.name = "Rang"
+            gdf.set_index("Nom", append=True, inplace=True)
+            
+            # Cols to display (excluding Nom which is in index)
+            # We perform style on the remaining columns
+            cols_display = [c for c in cols if c != 'Nom']
+            
+            styler_gdf = gdf[cols_display].style.set_properties(
+                subset=list(set(cols_display) & set(stats_cols_g)), # Ensure intersection
+                **{'text-align': 'center'}
+            ).set_table_styles([
+                {'selector': 'th', 'props': [('text-align', 'center !important')]},
+                {'selector': 'td', 'props': [('text-align', 'center !important')]}
+            ])
+            
+            g_pos = [c for c in cols_display if get_column_type(c) == 'pos']
+            g_neg = [c for c in cols_display if get_column_type(c) == 'neg']
+            
+            g_pos = [c for c in cols_display if get_column_type(c) == 'pos']
+            g_neg = [c for c in cols_display if get_column_type(c) == 'neg']
+            
+            # Global Context for Goalies
+            df_goal_global = pd.DataFrame()
+            if games_global is not None:
+                 g_ids_global = games_global['game_id'].unique()
+                 df_goal_global = calculate_goalie_stats(conn, g_ids_global)
+                 
+                 if not df_goal_global.empty:
+                     # Rename Global to match French Schema
+                     df_goal_global = df_goal_global.rename(columns={'Name': 'Nom', 'Team': 'Équipe', 'Shots': 'Lancers'})
+                 
+                     if normalize:
+                         for c, new_c in g_norm_map.items():
+                             # Verify column exists
+                             if c in df_goal_global.columns:
+                                 df_goal_global[new_col] = df_goal_global.apply(lambda r: r[c]/r['MJ'] if r['MJ'] > 0 else 0, axis=1)
+
+            for col in g_pos:
+                vmin, vmax = None, None
+                if not df_goal_global.empty and col in df_goal_global.columns:
+                     vmin = df_goal_global[col].min()
+                     vmax = df_goal_global[col].max()
+                styler_gdf = styler_gdf.background_gradient(cmap=cmap_pos, subset=[col], vmin=vmin, vmax=vmax)
+                
+            for col in g_neg:
+                vmin, vmax = None, None
+                if not df_goal_global.empty and col in df_goal_global.columns:
+                     vmin = df_goal_global[col].min()
+                     vmax = df_goal_global[col].max()
+                styler_gdf = styler_gdf.background_gradient(cmap=cmap_neg, subset=[col], vmin=vmin, vmax=vmax)
+            
+            st.dataframe(
+                styler_gdf, 
+                width="stretch",
+                column_config={
+                     "%Arr": st.column_config.NumberColumn(
+                        "%Arr",
+                        format="%.3f"
+                    ),
+                    "Moy": st.column_config.NumberColumn(
+                        "Moy",
+                        format="%.2f"
+                    ),
+                    **({c: st.column_config.NumberColumn(format="%.2f") for c in cols if '/MJ' in c} if normalize else {})
+                }
+            )
     
-    if not gdf.empty:
-        gdf = gdf.sort_values(by=['Moy', 'MJ'], ascending=[True, False]).reset_index(drop=True)
-        gdf.index += 1
-        
-        # Rename Cols
-        gdf = gdf.rename(columns={'Name': 'Nom', 'Team': 'Équipe', 'Shots': 'Lancers'})
-        
-        cols = ['Nom', 'Équipe', 'MJ', 'MA', 'V', 'D', 'N', 'BL', 'BC', 'Lancers', 'Moy', '%Arr', 'TG_str']
-        
-        if normalize:
-            # Map
-            g_norm_map = {
-                'MA': 'MA/MJ', 'V': 'V/MJ', 'D': 'D/MJ', 'N': 'N/MJ',
-                'BL': 'BL/MJ', 'BC': 'BC/MJ', 'Lancers': 'Lancers/MJ'
-            }
-            for col, new_col in g_norm_map.items():
-                gdf[new_col] = gdf.apply(lambda r: r[col]/r['MJ'] if r['MJ'] > 0 else 0, axis=1)
-                
-                
-            norm_order = list(g_norm_map.values())
-            orig_order = [c for c in cols if c not in ['Nom', 'Équipe', 'MJ']]
-            
-            # New request: MJ first
-            cols = ['Nom', 'Équipe', 'MJ'] + norm_order + orig_order
-        
-        # STYLING
-        # Center stats columns (Skip Nom, Team)
-        stats_cols_g = cols[2:] 
-        
-        # Pin Nom
-        gdf.index.name = "Rang"
-        gdf.set_index("Nom", append=True, inplace=True)
-        
-        # Cols to display (excluding Nom which is in index)
-        # We perform style on the remaining columns
-        cols_display = [c for c in cols if c != 'Nom']
-        
-        styler_gdf = gdf[cols_display].style.set_properties(
-            subset=list(set(cols_display) & set(stats_cols_g)), # Ensure intersection
-            **{'text-align': 'center'}
-        ).set_table_styles([
-            {'selector': 'th', 'props': [('text-align', 'center !important')]},
-            {'selector': 'td', 'props': [('text-align', 'center !important')]}
-        ])
-        
-        g_pos = [c for c in cols_display if get_column_type(c) == 'pos']
-        g_neg = [c for c in cols_display if get_column_type(c) == 'neg']
-        
-        g_pos = [c for c in cols_display if get_column_type(c) == 'pos']
-        g_neg = [c for c in cols_display if get_column_type(c) == 'neg']
-        
-        # Global Context for Goalies
-        df_goal_global = pd.DataFrame()
-        if games_global is not None:
-             g_ids_global = games_global['game_id'].unique()
-             df_goal_global = calculate_goalie_stats(conn, g_ids_global)
-             
-             if not df_goal_global.empty:
-                 # Rename Global to match French Schema
-                 df_goal_global = df_goal_global.rename(columns={'Name': 'Nom', 'Team': 'Équipe', 'Shots': 'Lancers'})
-             
-                 if normalize:
-                     for c, new_c in g_norm_map.items():
-                         # Verify column exists
-                         if c in df_goal_global.columns:
-                             df_goal_global[new_c] = df_goal_global.apply(lambda r: r[c]/r['MJ'] if r['MJ'] > 0 else 0, axis=1)
-
-        for col in g_pos:
-            vmin, vmax = None, None
-            if not df_goal_global.empty and col in df_goal_global.columns:
-                 vmin = df_goal_global[col].min()
-                 vmax = df_goal_global[col].max()
-            styler_gdf = styler_gdf.background_gradient(cmap=cmap_pos, subset=[col], vmin=vmin, vmax=vmax)
-            
-        for col in g_neg:
-            vmin, vmax = None, None
-            if not df_goal_global.empty and col in df_goal_global.columns:
-                 vmin = df_goal_global[col].min()
-                 vmax = df_goal_global[col].max()
-            styler_gdf = styler_gdf.background_gradient(cmap=cmap_neg, subset=[col], vmin=vmin, vmax=vmax)
-        
-        st.dataframe(
-            styler_gdf, 
-            width="stretch",
-            column_config={
-                 "%Arr": st.column_config.NumberColumn(
-                    "%Arr",
-                    format="%.3f"
-                ),
-                "Moy": st.column_config.NumberColumn(
-                    "Moy",
-                    format="%.2f"
-                ),
-                **({c: st.column_config.NumberColumn(format="%.2f") for c in cols if '/MJ' in c} if normalize else {})
-            }
-        )
-    else:
-        st.info("No goalie stats available for selected selection.")
-        
-
     # --- ADVANCED PLAYER STATS ---
     if 'leg_players' not in st.session_state: st.session_state.leg_players = False
     
@@ -1042,133 +1045,135 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             st.markdown("---")
     # Calculate for ALL (expensive?) or filtered?
     p_df = calculate_player_stats(games, goals, penalties, players)
+    # FILTER MIN MJ
+    p_df = p_df[p_df['MJ'] >= min_mj]
     
-    # Filter Players by Team Selection
-    if not p_df.empty:
+    if p_df.empty:
+        st.info("Aucune statistique de joueur trouvée.")
+    else:
+        # Filter Players by Team Selection
         if stats_mode != "Un contre tous":
             p_df = p_df[p_df['Team'].isin(selected_teams)]
-    
-    # Player Filter Widget (specific names)
-    if not p_df.empty:
-        all_player_names = sorted(p_df['Name'].unique())
-        specific_players = st.sidebar.multiselect("Filtrer par Joueur", all_player_names)
         
-        if specific_players:
-            p_df = p_df[p_df['Name'].isin(specific_players)]
-        
-    # Sort by PTS
-    if not p_df.empty:
-        p_df = p_df.sort_values(by=['PTS', 'B', 'MJ'], ascending=False).reset_index(drop=True)
-        p_df.index += 1
-        
-        # Rename Cols
-        p_df = p_df.rename(columns={'Name': 'Nom', 'Team': 'Équipe'})
-        
-        # Reorder columns to match request roughly: MJ B A PTS PEM BAN AAN PTS_AN BIN AID PTS_IN BG BE
-        col_map_p = {
-            'MJ': 'MJ', 'B': 'B', 'A': 'A', 'PTS': 'PTS', 'PEM': 'PEM', 'PUN': 'PUN',
-            'PEM/MJ': 'PEM/MJ', 'PTS/MJ': 'PTS/MJ',
-            'BAN': 'BAN', 'AAN': 'AAN', 'PTS_AN': 'PTS_AN', 'BIN': 'BIN', 'AID': 'AID', 
-            'PTS_IN': 'PTS_IN', 'BG': 'BG', 'BE': 'BE'
-        }
-        
-        cols = ['Nom', 'Équipe', 'MJ', 'B', 'A', 'PTS', 'PEM', 'PUN', 'PEM/MJ', 'PTS/MJ', 
-                'BAN', 'AAN', 'PTS_AN', 'BIN', 'AID', 'PTS_IN', 'BG', 'BE']
-
-        if normalize:
-            # Stats to normalize
-            # Already have PTS/MJ, PEM/MJ
-            p_to_norm = ['B', 'A', 'PUN', 'BAN', 'AAN', 'PTS_AN', 'BIN', 'AID', 'PTS_IN', 'BG', 'BE']
+        # Player Filter Widget (specific names)
+        if not p_df.empty:
+            all_player_names = sorted(p_df['Name'].unique())
+            specific_players = st.sidebar.multiselect("Filtrer par Joueur", all_player_names)
             
-            p_norm_cols = []
-            for col in p_to_norm:
-                new_col = f"{col}/MJ"
-                p_df[new_col] = p_df.apply(lambda r: r[col]/r['MJ'] if r['MJ'] > 0 else 0, axis=1)
-                p_norm_cols.append(new_col)
-                
-            # Order: [Nom, Team] [PTS/MJ, PEM/MJ] + [Other Norms] + [Originals]
-            # Actually user asked: "stats normalisées ... meme ordre que stats originales, gauche du tableau"
-            # Original: MJ B A PTS PEM PUN PEM/MJ PTS/MJ BAN ...
-            # Normalized block: B/MJ, A/MJ, PTS/MJ, PEM/MJ, PUN/MJ ...
+            if specific_players:
+                p_df = p_df[p_df['Name'].isin(specific_players)]
             
-            # Let's construct a cleaner normalized block
-            # Start with PTS/MJ and PEM/MJ which exist
+        # Sort by PTS
+        if not p_df.empty:
+            p_df = p_df.sort_values(by=['PTS', 'B', 'MJ'], ascending=False).reset_index(drop=True)
+            p_df.index += 1
             
-            # Requested logic: Normalized versions of [B, A, PTS, PEM, PUN, BAN...]
-            # Note: PTS/MJ and PEM/MJ are heavily used, put them first or with their group?
-            # User said: "meme ordre que stats originales".
-            # Original: B, A, PTS, PEM, PUN, BAN...
-            # Norm: B/MJ, A/MJ, PTS/MJ, PEM/MJ, PUN/MJ, BAN/MJ...
+            # Rename Cols
+            p_df = p_df.rename(columns={'Name': 'Nom', 'Team': 'Équipe'})
             
-            final_norm_ordered = ['B/MJ', 'A/MJ', 'PTS/MJ', 'PEM/MJ', 'PUN/MJ', 'BAN/MJ', 'AAN/MJ', 
-                                  'PTS_AN/MJ', 'BIN/MJ', 'AID/MJ', 'PTS_IN/MJ', 'BG/MJ', 'BE/MJ']
-            
-            # Ensure all exist (PTS/MJ and PEM/MJ exist, others created)
-            
-            orig_data_cols = [c for c in cols if c not in ['Nom', 'Équipe', 'PTS/MJ', 'PEM/MJ']] # Remove existing ratios from orig block if moving them?
-            # User usually wants to KEEP original stats too.
-            # "apparaître à la gauche du tableau AVANT les statistiques originales."
-            
-            # So: [Nom, Team] [Norm Block] [Orig Block]
-            orig_cols_filtered = [c for c in cols if c not in final_norm_ordered and c not in ['Nom', 'Équipe', 'MJ']]
-            cols = ['Nom', 'Équipe', 'MJ'] + final_norm_ordered + orig_cols_filtered
-            
-            # We strictly need to ensure columns exist in DF
-            # We created the loop ones. PTS/MJ and PEM/MJ exist.
-            pass
-
-        
-        # STYLING
-        stats_cols_p = cols[2:] # Skip Nom, Equipe
-        
-        # Pin Nom
-        p_df.index.name = "Rang"
-        p_df.set_index("Nom", append=True, inplace=True)
-        
-        cols_display_p = [c for c in cols if c != 'Nom']
-        
-        styler_pdf = p_df[cols_display_p].style.set_properties(
-            subset=list(set(cols_display_p) & set(stats_cols_p)),
-            **{'text-align': 'center'}
-        ).set_table_styles([
-            {'selector': 'th', 'props': [('text-align', 'center !important')]},
-            {'selector': 'td', 'props': [('text-align', 'center !important')]}
-        ])
-
-        p_pos = [c for c in cols_display_p if get_column_type(c) == 'pos']
-        p_neg = [c for c in cols_display_p if get_column_type(c) == 'neg']
-
-        if p_pos: styler_pdf = styler_pdf.background_gradient(cmap=cmap_pos, subset=p_pos)
-        if p_neg: styler_pdf = styler_pdf.background_gradient(cmap=cmap_neg, subset=p_neg)
-        
-        st.dataframe(
-            styler_pdf, 
-            use_container_width=True,
-            column_config={
-                "PTS": st.column_config.ProgressColumn(
-                    "PTS",
-                    help="Points au total",
-                    format="%d",
-                    min_value=0,
-                    max_value=int(max(p_df['PTS'].max(), 1)),
-                ),
-                "PTS/MJ": st.column_config.NumberColumn(
-                    "PTS/MJ",
-                    format="%.2f"
-                ),
-                "PEM/MJ": st.column_config.NumberColumn(
-                    "PEM/MJ",
-                    format="%.2f"
-                ),
-                 "Équipe": st.column_config.TextColumn(
-                    "Équipe",
-                    width="medium"
-                ),
-                **({c: st.column_config.NumberColumn(format="%.2f") for c in cols if '/MJ' in c} if normalize else {})
+            # Reorder columns to match request roughly: MJ B A PTS PEM BAN AAN PTS_AN BIN AID PTS_IN BG BE
+            col_map_p = {
+                'MJ': 'MJ', 'B': 'B', 'A': 'A', 'PTS': 'PTS', 'PEM': 'PEM', 'PUN': 'PUN',
+                'PEM/MJ': 'PEM/MJ', 'PTS/MJ': 'PTS/MJ',
+                'BAN': 'BAN', 'AAN': 'AAN', 'PTS_AN': 'PTS_AN', 'BIN': 'BIN', 'AID': 'AID', 
+                'PTS_IN': 'PTS_IN', 'BG': 'BG', 'BE': 'BE'
             }
-        )
-    else:
-        st.info("Aucune statistique de joueur trouvée.")
+            
+            cols = ['Nom', 'Équipe', 'MJ', 'B', 'A', 'PTS', 'PEM', 'PUN', 'PEM/MJ', 'PTS/MJ', 
+                    'BAN', 'AAN', 'PTS_AN', 'BIN', 'AID', 'PTS_IN', 'BG', 'BE']
+
+            if normalize:
+                # Stats to normalize
+                # Already have PTS/MJ, PEM/MJ
+                p_to_norm = ['B', 'A', 'PUN', 'BAN', 'AAN', 'PTS_AN', 'BIN', 'AID', 'PTS_IN', 'BG', 'BE']
+                
+                p_norm_cols = []
+                for col in p_to_norm:
+                    new_col = f"{col}/MJ"
+                    p_df[new_col] = p_df.apply(lambda r: r[col]/r['MJ'] if r['MJ'] > 0 else 0, axis=1)
+                    p_norm_cols.append(new_col)
+                    
+                # Order: [Nom, Team] [PTS/MJ, PEM/MJ] + [Other Norms] + [Originals]
+                # Actually user asked: "stats normalisées ... meme ordre que stats originales, gauche du tableau"
+                # Original: MJ B A PTS PEM PUN PEM/MJ PTS/MJ BAN ...
+                # Normalized block: B/MJ, A/MJ, PTS/MJ, PEM/MJ, PUN/MJ ...
+                
+                # Let's construct a cleaner normalized block
+                # Start with PTS/MJ and PEM/MJ which exist
+                
+                # Requested logic: Normalized versions of [B, A, PTS, PEM, PUN, BAN...]
+                # Note: PTS/MJ and PEM/MJ are heavily used, put them first or with their group?
+                # User said: "meme ordre que stats originales".
+                # Original: B, A, PTS, PEM, PUN, BAN...
+                # Norm: B/MJ, A/MJ, PTS/MJ, PEM/MJ, PUN/MJ, BAN/MJ...
+                
+                final_norm_ordered = ['B/MJ', 'A/MJ', 'PTS/MJ', 'PEM/MJ', 'PUN/MJ', 'BAN/MJ', 'AAN/MJ', 
+                                      'PTS_AN/MJ', 'BIN/MJ', 'AID/MJ', 'PTS_IN/MJ', 'BG/MJ', 'BE/MJ']
+                
+                # Ensure all exist (PTS/MJ and PEM/MJ exist, others created)
+                
+                orig_data_cols = [c for c in cols if c not in final_norm_ordered and c not in ['Nom', 'Équipe', 'PTS/MJ', 'PEM/MJ']] # Remove existing ratios from orig block if moving them?
+                # User usually wants to KEEP original stats too.
+                # "apparaître à la gauche du tableau AVANT les statistiques originales."
+                
+                # So: [Nom, Team] [Norm Block] [Orig Block]
+                orig_cols_filtered = [c for c in cols if c not in final_norm_ordered and c not in ['Nom', 'Équipe', 'MJ']]
+                cols = ['Nom', 'Équipe', 'MJ'] + final_norm_ordered + orig_cols_filtered
+                
+                # We strictly need to ensure columns exist in DF
+                # We created the loop ones. PTS/MJ and PEM/MJ exist.
+                pass
+
+            
+            # STYLING
+            stats_cols_p = cols[2:] # Skip Nom, Equipe
+            
+            # Pin Nom
+            p_df.index.name = "Rang"
+            p_df.set_index("Nom", append=True, inplace=True)
+            
+            cols_display_p = [c for c in cols if c != 'Nom']
+            
+            styler_pdf = p_df[cols_display_p].style.set_properties(
+                subset=list(set(cols_display_p) & set(stats_cols_p)),
+                **{'text-align': 'center'}
+            ).set_table_styles([
+                {'selector': 'th', 'props': [('text-align', 'center !important')]},
+                {'selector': 'td', 'props': [('text-align', 'center !important')]}
+            ])
+
+            p_pos = [c for c in cols_display_p if get_column_type(c) == 'pos']
+            p_neg = [c for c in cols_display_p if get_column_type(c) == 'neg']
+
+            if p_pos: styler_pdf = styler_pdf.background_gradient(cmap=cmap_pos, subset=p_pos)
+            if p_neg: styler_pdf = styler_pdf.background_gradient(cmap=cmap_neg, subset=p_neg)
+            
+            st.dataframe(
+                styler_pdf, 
+                use_container_width=True,
+                column_config={
+                    "PTS": st.column_config.ProgressColumn(
+                        "PTS",
+                        help="Points au total",
+                        format="%d",
+                        min_value=0,
+                        max_value=int(max(p_df['PTS'].max(), 1)),
+                    ),
+                    "PTS/MJ": st.column_config.NumberColumn(
+                        "PTS/MJ",
+                        format="%.2f"
+                    ),
+                    "PEM/MJ": st.column_config.NumberColumn(
+                        "PEM/MJ",
+                        format="%.2f"
+                    ),
+                     "Équipe": st.column_config.TextColumn(
+                        "Équipe",
+                        width="medium"
+                    ),
+                    **({c: st.column_config.NumberColumn(format="%.2f") for c in cols if '/MJ' in c} if normalize else {})
+                }
+            )
 
 
     # --- TEAM METRICS (Single Team Only) ---
