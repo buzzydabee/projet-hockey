@@ -1590,7 +1590,7 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
             cols_cfg[fr_c] = get_safe_chart_config(df_evo_std, fr_c, fr_c)
             
         st.dataframe(
-            df_evo_std.drop(columns=['__SortPTS', '__SortPTSMJ']),
+            df_evo_std.drop(columns=['__SortPTS']),
             column_config=cols_cfg,
             width="stretch"
         )
