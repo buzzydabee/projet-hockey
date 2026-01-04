@@ -2,6 +2,7 @@ import streamlit as st
 import sqlite3
 import pandas as pd
 from datetime import datetime
+from game_logic import GameReconstructor
 
 st.set_page_config(page_title="Hockey Stats Dashboard", layout="wide")
 
@@ -56,11 +57,12 @@ def load_data():
     conn.close()
     return games, goals, penalties
 
-def calculate_standings(games, penalties):
+def calculate_standings(games, penalties, goals):
     # Get all teams
     all_teams = sorted(list(set(games['home']) | set(games['visitor'])))
     
     stats = []
+    reconstructor = GameReconstructor()
     
     for team in all_teams:
         t_games = games[(games['home'] == team) | (games['visitor'] == team)]
@@ -77,7 +79,8 @@ def calculate_standings(games, penalties):
         s = {
             'Team': team, 'GP': len(t_games), 'W': 0, 'L': 0, 'T': 0, 
             'PTS': 0, 'GF': 0, 'GA': 0, 'FJ': 0,
-            'PP_G': 0, 'PP_Att': 0, 'PK_Kills': 0, 'PK_Att': 0
+            'PP_G': 0, 'PP_Att': 0, 'PK_Kills': 0, 'PK_Att': 0,
+            'PP_G_Rec': 0, 'PP_Att_Rec': 0
         }
         
         if len(t_games) == 0:
@@ -115,6 +118,26 @@ def calculate_standings(games, penalties):
             s['PK_Att'] += opp_pp_att
             s['PK_Kills'] += (opp_pp_att - opp_pp_g)
 
+            # --- RECONSTRUCTION ---
+            g_id = row['game_id']
+            g_goals = goals[goals['game_id'] == g_id]
+            g_pens = penalties[penalties['game_id'] == g_id]
+            
+            # Identify IDs
+            hid = row['home_team_id']
+            vid = row['visitor_team_id']
+            
+            rec_stats = reconstructor.reconstruct_game_stats(g_id, g_goals, g_pens, hid, vid)
+            
+            # Add to Team Stats
+            if is_home:
+                s['PP_G_Rec'] += rec_stats['pp_g_home']
+                s['PP_Att_Rec'] += rec_stats['pp_att_home']
+                # PK? User asked for PP comparison mainly, but logic is symetric
+            else:
+                s['PP_G_Rec'] += rec_stats['pp_g_vis']
+                s['PP_Att_Rec'] += rec_stats['pp_att_vis']
+
         # Points Formula: W*2 + T*1 + FJ
         s['PTS'] = (s['W'] * 2) + (s['T'] * 1) + s['FJ']
         
@@ -122,18 +145,22 @@ def calculate_standings(games, penalties):
         s['PP%'] = round((s['PP_G'] / s['PP_Att'] * 100) if s['PP_Att'] > 0 else 0, 1)
         s['PK%'] = round((s['PK_Kills'] / s['PK_Att'] * 100) if s['PK_Att'] > 0 else 0, 1)
         
+        # Rec Percentages
+        s['PP% Rec'] = round((s['PP_G_Rec'] / s['PP_Att_Rec'] * 100) if s['PP_Att_Rec'] > 0 else 0, 1)
+        
         # PTS/MJ
         s['PTS/MJ'] = round((s['PTS'] / s['GP']) if s['GP'] > 0 else 0, 3)
 
         # Format string "A/B"
         s['PP'] = f"{s['PP_G']}/{s['PP_Att']}"
+        s['PP (Rec)'] = f"{s['PP_G_Rec']}/{s['PP_Att_Rec']}"
         s['PK'] = f"{s['PK_Kills']}/{s['PK_Att']}"
         s['PIM'] = pim
         s['DIFF'] = s['GF'] - s['GA']
         
         stats.append(s)
         
-    cols_to_show = ['Team', 'PTS/MJ', 'PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'DIFF', 'PP%', 'PK%', 'PIM']
+    cols_to_show = ['Team', 'PTS/MJ', 'PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'DIFF', 'PP%', 'PP% Rec', 'PK%', 'PIM']
     
     # Return empty if needed
     if not stats:
@@ -167,8 +194,11 @@ def calculate_standings(games, penalties):
             standings_games = games[games['home'].isin(selected_teams) | games['visitor'].isin(selected_teams)]
             s_ids = standings_games['game_id'].unique()
             standings_penalties = penalties[penalties['game_id'].isin(s_ids)]
+            standings_goals = goals[goals['game_id'].isin(s_ids)]
+        else:
+            standings_goals = goals
             
-        standings = calculate_standings(standings_games, standings_penalties)
+        standings = calculate_standings(standings_games, standings_penalties, standings_goals)
         
         # If we selected specific teams, we probably only want to SEE those teams in the table?
         # Or do we want to see their opponents too?
@@ -177,7 +207,7 @@ def calculate_standings(games, penalties):
         if not standings.empty:
              standings = standings[standings['Team'].isin(selected_teams)]
     
-        cols_to_show = ['Team', 'PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'PP%', 'PK%', 'PIM']  # Simplified view
+        cols_to_show = ['Team', 'PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'PP%', 'PP% Rec', 'PK%', 'PIM']  # Simplified view
         st.dataframe(standings[cols_to_show], use_container_width=True)
 
 def parse_time_to_seconds(period, time_str):
@@ -1336,12 +1366,12 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
     # We must calculate PP% for the period, then store that value.
     # So we prefer to store the FINISHED stat value for the period.
     
-    cols_std_to_track = ['PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'DIFF', 'PP%', 'PK%', 'PIM']
+    cols_std_to_track = ['PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'DIFF', 'PP%', 'PK%', 'PIM', 'PP% Rec']
     # Mapping to French for Display
     std_map = {
         'Team': 'Équipe', 'GP': 'MJ', 'W': 'V/MJ', 'L': 'D/MJ', 'T': 'N/MJ',
         'GF': 'BP/MJ', 'GA': 'BC/MJ', 'PP%': '%AN', 'PK%': '%DN', 'PIM': 'PUN/MJ',
-        'PTS': 'PTS/MJ', 'FJ': 'FJ/MJ', 'DIFF': 'DIFF/MJ'
+        'PTS': 'PTS/MJ', 'FJ': 'FJ/MJ', 'DIFF': 'DIFF/MJ', 'PP% Rec': '%AN (Rec)'
     }
     
     
@@ -1379,9 +1409,10 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
              s_games = p_games[p_games['home'].isin(selected_teams) | p_games['visitor'].isin(selected_teams)]
              s_ids = s_games['game_id'].unique()
              s_pens = p_penalties[p_penalties['game_id'].isin(s_ids)]
+             s_goals = p_goals[p_goals['game_id'].isin(s_ids)]
                  
         start_time = datetime.now()
-        df_std = calculate_standings(s_games, s_pens)
+        df_std = calculate_standings(s_games, s_pens, s_goals)
         
         # Add PTS/MJ
         if not df_std.empty:
