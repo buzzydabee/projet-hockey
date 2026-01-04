@@ -1561,13 +1561,22 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
         st.subheader("Classement")
         df_evo_std = make_spark_df(agg_standings, std_map, 'Équipe')
         
-        # Sort? by PTS sum?
-        # Let's add a hidden total for sorting
-        # Let's add a hidden total for sorting
-        df_evo_std['__SortPTS'] = df_evo_std['PTS'].apply(sum)
-        df_evo_std['__SortPTSMJ'] = df_evo_std['PTS/MJ'].apply(lambda x: sum(x)/num_periods) # Average of Avg
+        # Sort by PTS sum
+        col_pts = std_map.get('PTS', 'PTS')
+        col_pts_mj = std_map.get('PTS/MJ', 'PTS/MJ')
         
-        df_evo_std = df_evo_std.sort_values(by=['__SortPTS', '__SortPTSMJ'], ascending=False).reset_index(drop=True)
+        # Calculate Sort Keys
+        df_evo_std['__SortPTS'] = df_evo_std[col_pts].apply(sum)
+        # Note: If PTS is mapped to PTS/MJ, do we sort by sum of PTS/MJ? 
+        # Yes, high average -> high rank usually. 
+        # But wait, sum of PTS/MJ across 4 periods is a weird metric.
+        # Ideally we want Total Points... but we normalized everything!
+        # If we only have normalized data, Sum of PTS/MJ is a reasonable proxy for performance.
+        
+        # Sort Logic
+        df_evo_std = df_evo_std.sort_values(by=['__SortPTS'], ascending=False).reset_index(drop=True)
+        
+        df_evo_std = df_evo_std.reset_index(drop=True)
         df_evo_std.index += 1
         df_evo_std.index.name = "Rang"
         df_evo_std.set_index("Équipe", append=True, inplace=True)
@@ -1630,7 +1639,8 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
         df_evo_p = make_spark_df(agg_players, p_map, 'Nom')
         
         # Sort by PTS sum
-        df_evo_p['__PTS'] = df_evo_p['PTS'].apply(sum)
+        col_pts_p = p_map.get('PTS', 'PTS')
+        df_evo_p['__PTS'] = df_evo_p[col_pts_p].apply(sum)
         df_evo_p = df_evo_p.sort_values(by='__PTS', ascending=False).reset_index(drop=True)
         df_evo_p.index += 1
         df_evo_p.index.name = "Rang"
