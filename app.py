@@ -1277,11 +1277,12 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
     # We must calculate PP% for the period, then store that value.
     # So we prefer to store the FINISHED stat value for the period.
     
-    cols_std_to_track = ['PTS', 'PTS/MJ', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'DIFF', 'PP%', 'PK%', 'PIM']
+    cols_std_to_track = ['PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'DIFF', 'PP%', 'PK%', 'PIM']
     # Mapping to French for Display
     std_map = {
-        'Team': 'Équipe', 'GP': 'MJ', 'W': 'V', 'L': 'D', 'T': 'N',
-        'GF': 'BP', 'GA': 'BC', 'PP%': '%AN', 'PK%': '%DN', 'PIM': 'PUN'
+        'Team': 'Équipe', 'GP': 'MJ', 'W': 'V/MJ', 'L': 'D/MJ', 'T': 'N/MJ',
+        'GF': 'BP/MJ', 'GA': 'BC/MJ', 'PP%': '%AN', 'PK%': '%DN', 'PIM': 'PUN/MJ',
+        'PTS': 'PTS/MJ', 'FJ': 'FJ/MJ', 'DIFF': 'DIFF/MJ'
     }
     
     
@@ -1398,7 +1399,7 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
         #  We should arguably move specific_players filter to main() or replicate it here if we want consistency.
         #  For now, show all selected team players.)
         
-        cols_play_track = ['MJ', 'B', 'A', 'PTS', 'PEM', 'PUN', 'PEM/MJ', 'PTS/MJ', 
+        cols_play_track = ['MJ', 'B', 'A', 'PTS', 'PEM', 'PUN', 
                            'BAN', 'AAN', 'PTS_AN', 'BIN', 'AID', 'PTS_IN', 'BG', 'BE']
                            
         for _, row in df_play.iterrows():
@@ -1537,7 +1538,11 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
     # --- GOALIES ---
     if agg_goalies:
         st.subheader("Gardiens")
-        g_map = {'Shots': 'Lancers', 'Name': 'Nom', 'Team': 'Équipe'}
+        g_map = {
+            'Shots': 'Lancers/MJ', 'Name': 'Nom', 'Team': 'Équipe',
+            'MA': 'MA/MJ', 'V': 'V/MJ', 'D': 'D/MJ', 'N': 'N/MJ',
+            'BL': 'BL/MJ', 'BC': 'BC/MJ'
+        }
         df_evo_g = make_spark_df(agg_goalies, g_map, 'Nom')
         
         # Sort
@@ -1562,7 +1567,13 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
     # --- PLAYERS ---
     if agg_players:
         st.subheader("Joueurs")
-        p_map = {'Name': 'Nom', 'Team': 'Équipe'}
+        p_map = {
+            'Name': 'Nom', 'Team': 'Équipe',
+            'B': 'B/MJ', 'A': 'A/MJ', 'PTS': 'PTS/MJ', 'PEM': 'PEM/MJ', 'PUN': 'PUN/MJ',
+            'BAN': 'BAN/MJ', 'AAN': 'AAN/MJ', 'PTS_AN': 'PTS_AN/MJ',
+            'BIN': 'BIN/MJ', 'AID': 'AID/MJ', 'PTS_IN': 'PTS_IN/MJ',
+            'BG': 'BG/MJ', 'BE': 'BE/MJ'
+        }
         df_evo_p = make_spark_df(agg_players, p_map, 'Nom')
         
         # Sort by PTS sum
