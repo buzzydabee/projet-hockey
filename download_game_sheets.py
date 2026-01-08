@@ -1,9 +1,12 @@
 import os
 import time
 import requests
+import sqlite3
+from datetime import datetime, timedelta
 from playwright.sync_api import sync_playwright
 
 # Configuration
+DB_NAME = "hockey_stats.db"
 TEAMS = [
   {"name": "BÉLIERS QUÉBEC-CENTRE", "id": "126544"},
   {"name": "AIGLES CBIO", "id": "126148"},
@@ -30,6 +33,50 @@ TEAMS = [
 TEAM_SCHEDULE_URL_TEMPLATE = "https://page.spordle.com/fr/ligue-hockey-mineur-capitale-nationale/teams/{team_id}?tab=schedule"
 DOWNLOAD_DIR = "downloads"
 PDF_BASE_URL = "https://pdf.play.spordle.com/game/{game_id}?locale=fr"
+
+def get_optimal_start_date():
+    try:
+        if not os.path.exists(DB_NAME):
+            return "2025-09-01"
+            
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        cursor.execute("SELECT MAX(date) FROM DimGame")
+        result = cursor.fetchone()
+        conn.close()
+        
+        if result and result[0]:
+            last_date_str = result[0]
+            # Map French months
+            months_map = {
+                "janvier": 1, "février": 2, "fevrier": 2, "mars": 3, "avril": 4, "mai": 5, "juin": 6,
+                "juillet": 7, "août": 8, "aout": 8, "septembre": 9, "octobre": 10, "novembre": 11, "décembre": 12, "decembre": 12
+            }
+            
+            try:
+                parts = last_date_str.lower().split()
+                # Format: "SAMEDI 1 NOVEMBRE 2025" -> parts[1]=1, parts[2]=novembre, parts[3]=2025
+                if len(parts) >= 4:
+                    d = int(parts[1])
+                    m = months_map.get(parts[2], 9)
+                    y = int(parts[3])
+                elif len(parts) == 3: # 1 NOVEMBRE 2025
+                    d = int(parts[0])
+                    m = months_map.get(parts[1], 9)
+                    y = int(parts[2])
+                else:
+                    return "2025-09-01"
+                    
+                last_date = datetime(y, m, d)
+                start_date = last_date - timedelta(days=7)
+                return start_date.strftime("%Y-%m-%d")
+            except:
+                return "2025-09-01"
+                
+        return "2025-09-01"
+    except Exception as e:
+        print(f"Error getting start date from DB: {e}")
+        return "2025-09-01"
 
 def ensure_download_dir():
     if not os.path.exists(DOWNLOAD_DIR):
@@ -59,7 +106,7 @@ def download_pdf(game_id):
         print(f"Error downloading Game {game_id}: {e}")
         return False
 
-def process_team_schedule(page, team_id, team_name):
+def process_team_schedule(page, team_id, team_name, date_from="2025-09-01"):
     print(f"\n--- Processing Team: {team_name} (ID: {team_id}) ---")
     url = TEAM_SCHEDULE_URL_TEMPLATE.format(team_id=team_id)
     print(f"Navigating to {url}...")
@@ -69,6 +116,7 @@ def process_team_schedule(page, team_id, team_name):
     intercepted_ids = set()
     
     def handle_response(response):
+
         try:
             # We are looking for JSON responses that might contain schedule data
             if "json" in response.headers.get("content-type", ""):
@@ -170,12 +218,12 @@ def process_team_schedule(page, team_id, team_name):
         return
 
     # 2. Set Dates
-    print("Setting dates: 2025-09-01 to 2026-04-30")
+    print(f"Setting dates: {date_from} to 2026-04-30")
     try:
         # Start Date
         page.locator("#date-picker-start").click(click_count=3, force=True)
         page.keyboard.press("Backspace") 
-        page.fill("#date-picker-start", "2025-09-01")
+        page.fill("#date-picker-start", date_from)
         time.sleep(1)
         
         # End Date
@@ -389,9 +437,13 @@ def main():
             context = browser.new_context(viewport={'width': 1280, 'height': 800})
             page = context.new_page()
 
+            # Calculate Date Once
+            start_date = get_optimal_start_date()
+            print(f"Smart Optimization: Starting search from {start_date}")
+
             for team in TEAMS:
                 try:
-                    process_team_schedule(page, team['id'], team['name'])
+                    process_team_schedule(page, team['id'], team['name'], date_from=start_date)
                 except Exception as e:
                     print(f"Critical error processing team {team['name']}: {e}")
 
