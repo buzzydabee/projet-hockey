@@ -1,6 +1,7 @@
 import streamlit as st
 import sqlite3
 import pandas as pd
+import time
 from datetime import datetime
 from game_logic import GameReconstructor
 
@@ -637,27 +638,84 @@ def main():
     # --- DATA MANAGEMENT ---
     st.sidebar.header("Gestion des Données")
     if st.sidebar.button("Vérifier nouveaux matchs"):
-        with st.spinner("Vérification en cours... (Le navigateur peut s'ouvrir)"):
-            import subprocess
-            try:
-                # Run Download
-                result_dl = subprocess.run(["python", "download_game_sheets.py"], capture_output=True, text=True)
-                st.sidebar.success("Vérification terminée.")
-                if result_dl.stdout:
-                    with st.sidebar.expander("Journal de téléchargement"):
-                        st.text(result_dl.stdout)
+        # Create a status container
+        status = st.sidebar.status("Démarrage de la vérification...", expanded=True)
+        import subprocess
+        import shlex
+        
+        try:
+            # --- 1. DOWNLOAD ---
+            status.write("Lancement du téléchargement...")
+            # Use 'python -u' for unbuffered output to get real-time logs
+            cmd = ["python", "-u", "download_game_sheets.py"]
+            
+            process = subprocess.Popen(
+                cmd, 
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.STDOUT, 
+                text=True, 
+                bufsize=1, 
+                encoding='utf-8' # Force encoding
+            )
+            
+            # Stream output
+            for line in process.stdout:
+                line = line.strip()
+                if line:
+                    status.write(line) # Log everything to expander
+                    
+                    # Update Label based on content
+                    if "Processing Team" in line:
+                         team_name = line.split("Team:")[1].split("(")[0].strip()
+                         status.update(label=f"Traitement: {team_name}")
+                    elif "Scanning Page" in line:
+                         status.update(label=f"Scan: {line}")
+                    elif "Found" in line and "unique games" in line:
+                         status.update(label="Téléchargement des matchs...")
+            
+            process.wait()
+            
+            if process.returncode == 0:
+                 status.update(label="Téléchargement terminé!", state="complete", expanded=False)
+                 st.sidebar.success("Téléchargement terminé.")
+            else:
+                 status.update(label="Erreur durant le téléchargement", state="error")
+                 st.sidebar.error("Erreur durant le téléchargement.")
+                 
+            # --- 2. PROCESS ---
+            if process.returncode == 0:
+                status_proc = st.sidebar.status("Mise à jour de la BD...", expanded=True)
+                cmd_proc = ["python", "-u", "process_gamesheets.py"]
                 
-                # Run Process
-                with st.spinner("Traitement des nouveaux fichiers..."):
-                    result_proc = subprocess.run(["python", "process_gamesheets.py"], capture_output=True, text=True)
+                process_proc = subprocess.Popen(
+                    cmd_proc,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                    encoding='utf-8'
+                )
+                
+                for line in process_proc.stdout:
+                    line = line.strip()
+                    if line:
+                        status_proc.write(line)
+                        if "Processing" in line and ".pdf" in line:
+                             status_proc.update(label=f"Ajout: {line.split('Processing')[1].strip()}")
+
+                process_proc.wait()
+                
+                if process_proc.returncode == 0:
+                    status_proc.update(label="Base de données à jour!", state="complete", expanded=False)
                     st.sidebar.success("Base de données mise à jour.")
-                    if result_proc.stdout:
-                         with st.sidebar.expander("Journal de traitement"):
-                             st.text(result_proc.stdout)
-                             
-                st.rerun()
-            except Exception as e:
-                st.sidebar.error(f"Erreur: {e}")
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    status_proc.update(label="Erreur de traitement", state="error")
+        
+        except Exception as e:
+            st.sidebar.error(f"Erreur critique: {e}")
+            print(e)
 
     if st.sidebar.button("Reconstruire la BD (Local)"):
         with st.spinner("Reconstruction de la base de données..."):
