@@ -384,7 +384,7 @@ def main():
     
     with sync_playwright() as p:
         # Launch browser
-        browser = p.chromium.launch(headless=False)
+        browser = p.chromium.launch(headless=True)
         try:
             context = browser.new_context(viewport={'width': 1280, 'height': 800})
             page = context.new_page()
