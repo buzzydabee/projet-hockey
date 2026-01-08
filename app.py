@@ -644,6 +644,11 @@ def main():
         import shlex
         
         try:
+            # Prepare Environment to force UTF-8 output
+            import os
+            my_env = os.environ.copy()
+            my_env["PYTHONIOENCODING"] = "utf-8"
+            
             # --- 1. DOWNLOAD ---
             status.write("Lancement du téléchargement...")
             # Use 'python -u' for unbuffered output to get real-time logs
@@ -655,23 +660,45 @@ def main():
                 stderr=subprocess.STDOUT, 
                 text=True, 
                 bufsize=1, 
-                encoding='utf-8' # Force encoding
+                encoding='utf-8',
+                env=my_env # Force UTF-8 environment
             )
             
+            # Filter logic
+            def is_user_friendly_log(text):
+                # Keywords to keep
+                keywords = ["Traitement:", "Téléchargement:", "Ajout:", "Processing Team", "Scanning Page", "Found", "Setting dates"]
+                # Keywords to ignore
+                ignore = ["Navigating", "Automating", "Clicking", "Waiting", "cookies", "Error opening", "Captured"]
+                
+                for k in keywords:
+                    if k in text: return True
+                return False
+
             # Stream output
             for line in process.stdout:
-                line = line.strip()
-                if line:
-                    status.write(line) # Log everything to expander
-                    
-                    # Update Label based on content
-                    if "Processing Team" in line:
-                         team_name = line.split("Team:")[1].split("(")[0].strip()
-                         status.update(label=f"Traitement: {team_name}")
-                    elif "Scanning Page" in line:
-                         status.update(label=f"Scan: {line}")
-                    elif "Found" in line and "unique games" in line:
-                         status.update(label="Téléchargement des matchs...")
+                try:
+                    line = line.strip()
+                    if line:
+                        # Only write important stuff to log
+                        if is_user_friendly_log(line):
+                             status.write(line) 
+                        
+                        # Update Label based on content
+                        if "Processing Team" in line:
+                             # Safe split
+                             parts = line.split("Team:")
+                             if len(parts) > 1:
+                                 team_name = parts[1].split("(")[0].strip()
+                                 status.update(label=f"Traitement: {team_name}")
+                        elif "Scanning Page" in line:
+                             status.update(label=f"Scan: {line}")
+                        elif "Found" in line and "unique games" in line:
+                             status.update(label="Téléchargement des matchs...")
+                        elif "Setting dates" in line:
+                             status.update(label=f"Config: {line}")
+                except Exception:
+                    continue # Skip unparseable lines
             
             process.wait()
             
@@ -693,16 +720,23 @@ def main():
                     stderr=subprocess.STDOUT,
                     text=True,
                     bufsize=1,
-                    encoding='utf-8'
+                    encoding='utf-8',
+                    env=my_env # Force UTF-8 environment
                 )
                 
                 for line in process_proc.stdout:
-                    line = line.strip()
-                    if line:
-                        status_proc.write(line)
-                        if "Processing" in line and ".pdf" in line:
-                             status_proc.update(label=f"Ajout: {line.split('Processing')[1].strip()}")
-
+                    try:
+                        line = line.strip()
+                        if line:
+                            status_proc.write(line)
+                            if "Processing" in line and ".pdf" in line:
+                                 # Safe split
+                                 parts = line.split("Processing")
+                                 if len(parts) > 1:
+                                     status_proc.update(label=f"Ajout: {parts[1].strip()}")
+                    except Exception:
+                        continue
+                        
                 process_proc.wait()
                 
                 if process_proc.returncode == 0:

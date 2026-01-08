@@ -41,38 +41,49 @@ def get_optimal_start_date():
             
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
-        cursor.execute("SELECT MAX(date) FROM DimGame")
-        result = cursor.fetchone()
+        # Fetch ALL dates because MAX() on text "9 novembre" > "21 octobre" is wrong.
+        cursor.execute("SELECT date FROM DimGame")
+        rows = cursor.fetchall()
         conn.close()
         
-        if result and result[0]:
-            last_date_str = result[0]
-            # Map French months
-            months_map = {
-                "janvier": 1, "février": 2, "fevrier": 2, "mars": 3, "avril": 4, "mai": 5, "juin": 6,
-                "juillet": 7, "août": 8, "aout": 8, "septembre": 9, "octobre": 10, "novembre": 11, "décembre": 12, "decembre": 12
-            }
-            
+        if not rows:
+            return "2025-09-01"
+
+        months_map = {
+            "janvier": 1, "février": 2, "fevrier": 2, "mars": 3, "avril": 4, "mai": 5, "juin": 6,
+            "juillet": 7, "août": 8, "aout": 8, "septembre": 9, "octobre": 10, "novembre": 11, "décembre": 12, "decembre": 12
+        }
+
+        parsed_dates = []
+        for r in rows:
+            date_str = r[0]
             try:
-                parts = last_date_str.lower().split()
-                # Format: "SAMEDI 1 NOVEMBRE 2025" -> parts[1]=1, parts[2]=novembre, parts[3]=2025
+                parts = date_str.lower().split()
+                # Format: "SAMEDI 1 NOVEMBRE 2025" or "1 NOVEMBRE 2025"
                 if len(parts) >= 4:
                     d = int(parts[1])
                     m = months_map.get(parts[2], 9)
                     y = int(parts[3])
-                elif len(parts) == 3: # 1 NOVEMBRE 2025
+                    parsed_dates.append(datetime(y, m, d))
+                elif len(parts) == 3: 
                     d = int(parts[0])
                     m = months_map.get(parts[1], 9)
                     y = int(parts[2])
-                else:
-                    return "2025-09-01"
-                    
-                last_date = datetime(y, m, d)
-                start_date = last_date - timedelta(days=7)
-                return start_date.strftime("%Y-%m-%d")
+                    parsed_dates.append(datetime(y, m, d))
             except:
-                return "2025-09-01"
+                continue
+        
+        if parsed_dates:
+            last_date = max(parsed_dates)
+            # Buffer of 7 days
+            start_date = last_date - timedelta(days=7)
+            # Ensure we don't go before season start? Not strictly necessary but cleaner.
+            season_start = datetime(2025, 9, 1)
+            if start_date < season_start:
+                start_date = season_start
                 
+            return start_date.strftime("%Y-%m-%d")
+            
         return "2025-09-01"
     except Exception as e:
         print(f"Error getting start date from DB: {e}")
