@@ -315,8 +315,11 @@ def check_ot_so(fields):
 
 
 def main():
-    if os.path.exists(DB_NAME):
-        os.remove(DB_NAME) # CONSTANT CLEAN STATE FOR DEV
+    # if os.path.exists(DB_NAME):
+    #     try:
+    #         os.remove(DB_NAME) # CONSTANT CLEAN STATE FOR DEV
+    #     except PermissionError:
+    #         print("Could not delete DB file (in use). Proceeding with incremental update.")
         
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
@@ -337,6 +340,14 @@ def main():
             # Extract Game Info
             # Extract ID from filename or field? filename is safer: game_654709.pdf
             game_id = int(re.search(r"game_(\d+)", filename).group(1))
+            
+            # --- IDEMPOTENCY CHECK ---
+            # If game exists, remove it first to allow update
+            cursor.execute("DELETE FROM FactGoalieStats WHERE game_id = ?", (game_id,))
+            cursor.execute("DELETE FROM FactPenalties WHERE game_id = ?", (game_id,))
+            cursor.execute("DELETE FROM FactGoals WHERE game_id = ?", (game_id,))
+            cursor.execute("DELETE FROM DimGame WHERE game_id = ?", (game_id,))
+            # -------------------------
             
             game_date_str = fields.get('gameDate', {}).get('/V')
             

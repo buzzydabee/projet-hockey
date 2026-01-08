@@ -666,13 +666,13 @@ def main():
             
             # Filter logic
             def is_user_friendly_log(text):
-                # Keywords to keep
-                keywords = ["Traitement:", "Téléchargement:", "Ajout:", "Processing Team", "Scanning Page", "Found", "Setting dates"]
-                # Keywords to ignore
-                ignore = ["Navigating", "Automating", "Clicking", "Waiting", "cookies", "Error opening", "Captured"]
-                
-                for k in keywords:
-                    if k in text: return True
+                # Only write "Actionable" info to the history (Downloads, Finds)
+                # We do NOT write "Processing Team" to history to avoid a long list of 20 teams.
+                if "Downloaded" in text or "Téléchargement terminé" in text: return True
+                if "Found" in text and "unique games" in text:
+                    # Only show if count > 0
+                    if " 0 unique games" in text: return False
+                    return True
                 return False
 
             # Stream output
@@ -680,13 +680,8 @@ def main():
                 try:
                     line = line.strip()
                     if line:
-                        # Only write important stuff to log
-                        if is_user_friendly_log(line):
-                             status.write(line) 
-                        
-                        # Update Label based on content
+                        # 1. Update Label (Real-time feedback)
                         if "Processing Team" in line:
-                             # Safe split
                              parts = line.split("Team:")
                              if len(parts) > 1:
                                  team_name = parts[1].split("(")[0].strip()
@@ -694,17 +689,23 @@ def main():
                         elif "Scanning Page" in line:
                              status.update(label=f"Scan: {line}")
                         elif "Found" in line and "unique games" in line:
-                             status.update(label="Téléchargement des matchs...")
+                             status.update(label="Vérification des matchs...")
                         elif "Setting dates" in line:
-                             status.update(label=f"Config: {line}")
+                             # Debug info, don't show in label to keep it clean, maybe just log?
+                             pass
+
+                        # 2. Write to Log History (Only important events)
+                        if is_user_friendly_log(line):
+                             status.write(line) 
+                             
                 except Exception:
                     continue # Skip unparseable lines
             
             process.wait()
             
             if process.returncode == 0:
-                 status.update(label="Téléchargement terminé!", state="complete", expanded=False)
-                 st.sidebar.success("Téléchargement terminé.")
+                 status.update(label="Vérification terminée!", state="complete", expanded=False)
+                 st.sidebar.success("Vérification terminée.")
             else:
                  status.update(label="Erreur durant le téléchargement", state="error")
                  st.sidebar.error("Erreur durant le téléchargement.")
@@ -713,6 +714,8 @@ def main():
             if process.returncode == 0:
                 status_proc = st.sidebar.status("Mise à jour de la BD...", expanded=True)
                 cmd_proc = ["python", "-u", "process_gamesheets.py"]
+                
+                # ... process setup same as beform ...
                 
                 process_proc = subprocess.Popen(
                     cmd_proc,
@@ -728,12 +731,14 @@ def main():
                     try:
                         line = line.strip()
                         if line:
-                            status_proc.write(line)
+                            # Update Label
                             if "Processing" in line and ".pdf" in line:
-                                 # Safe split
                                  parts = line.split("Processing")
                                  if len(parts) > 1:
                                      status_proc.update(label=f"Ajout: {parts[1].strip()}")
+                            # Write critical info
+                            if "Successfully processed" in line:
+                                status_proc.write(line)
                     except Exception:
                         continue
                         
