@@ -1367,7 +1367,7 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
         
         # Let's re-find the row using FRENCH column names
         # Let's re-find the row using FRENCH column names (Équipe is in Index now)
-        t_row = standings[standings.index.get_level_values('Équipe') == selected_team]
+        t_row = standings[standings['Équipe'] == selected_team]
         if not t_row.empty:
             team_row = t_row.iloc[0]
             
