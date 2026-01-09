@@ -774,14 +774,14 @@ def main():
     view = st.sidebar.radio("Vue", ["Tableau de bord", "Évolution"], index=0)
 
     # Common Filter
-    min_mj = st.sidebar.number_input("Min. Parties Jouées", min_value=1, value=1)
+    min_mj = st.sidebar.number_input("Min. Parties Jouées", min_value=1, value=2)
 
     if view == "Tableau de bord":
         normalize = st.sidebar.checkbox("Normaliser par MJ", value=False)
         render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, players, normalize, 
                          games_global, goals_global, penalties_global, min_mj)
     else:
-        num_periods = st.sidebar.slider("Nombre de périodes", 1, 5, 4)
+        num_periods = st.sidebar.slider("Nombre de périodes", 1, 5, 3)
         render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, players, num_periods, min_mj)
         
     conn.close()
