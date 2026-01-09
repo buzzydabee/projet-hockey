@@ -325,24 +325,40 @@ def main():
     cursor = conn.cursor()
     create_schema(cursor)
     
+    skipped_count = 0
+    
     for filename in TARGET_FILES:
         filepath = os.path.join(DOWNLOAD_DIR, filename)
         if not os.path.exists(filepath):
             print(f"File not found: {filepath}")
             continue
             
-        print(f"Processing {filename}...")
+        # print(f"Processing {filename}...")
         
         try:
+            # Extract Game Info
+            # Extract ID from filename or field? filename is safer: game_654709.pdf
+            try:
+                game_id = int(re.search(r"game_(\d+)", filename).group(1))
+            except:
+                print(f"Skipping file {filename}: Invalid format")
+                continue
+            
+            # --- CHECK EXISTING ---
+            cursor.execute("SELECT 1 FROM DimGame WHERE game_id=?", (game_id,))
+            if cursor.fetchone():
+                skipped_count += 1
+                # print(f"Skipping existing game {game_id} (already in DB)")
+                continue
+            # ----------------------
+
+            print(f"Processing new file: {filename}...")
+            
             reader = PdfReader(filepath)
             fields = reader.get_fields()
             
-            # Extract Game Info
-            # Extract ID from filename or field? filename is safer: game_654709.pdf
-            game_id = int(re.search(r"game_(\d+)", filename).group(1))
-            
             # --- IDEMPOTENCY CHECK ---
-            # If game exists, remove it first to allow update
+            # If game exists, remove it first (redundant now with above check, but safe for updates if we remove the check later)
             cursor.execute("DELETE FROM FactGoalieStats WHERE game_id = ?", (game_id,))
             cursor.execute("DELETE FROM FactPenalties WHERE game_id = ?", (game_id,))
             cursor.execute("DELETE FROM FactGoals WHERE game_id = ?", (game_id,))
@@ -449,6 +465,7 @@ def main():
             import traceback
             traceback.print_exc()
 
+    print(f"Database Update Complete. Skipped {skipped_count} existing files.")
     conn.close()
 
 if __name__ == "__main__":
