@@ -389,6 +389,11 @@ def calculate_player_stats(games, goals, penalties, players):
         row['PTS/MJ'] = round(row['PTS']/row['MJ'], 2) if row['MJ'] else 0
         res.append(row)
     
+    if not res:
+        cols = ['Name', 'Team', 'MJ', 'B', 'A', 'PTS', 'PEM', 'PUN', 'BAN', 'AAN', 'PTS_AN', 
+                'BIN', 'AID', 'PTS_IN', 'BG', 'BE', 'PEM/MJ', 'PTS/MJ']
+        return pd.DataFrame(columns=cols)
+
     return pd.DataFrame(res)
 
 def calculate_goalie_stats(conn, filtered_game_ids=None):
