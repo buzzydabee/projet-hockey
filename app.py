@@ -467,6 +467,9 @@ def calculate_goalie_stats(conn, filtered_game_ids=None):
         v['TG_str'] = f"{m}:{s:02d}"
         finals.append(v)
         
+    if not finals:
+        return pd.DataFrame(columns=['Name', 'Team', 'MJ', 'MA', 'V', 'D', 'N', 'BL', 'BC', 'Shots', 'TG', 'Moy', '%Arr', 'TG_str'])
+        
     return pd.DataFrame(finals)
 
 # Divisions Map (To be populated)
