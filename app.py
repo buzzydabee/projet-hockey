@@ -1499,7 +1499,8 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
         with tab1:
             st.subheader("Journal de Match")
             # Show relevant columns
-            log_cols = ['date_dt', 'home', 'visitor', 'final_score_home', 'final_score_visitor', 'arena']
+            # Reordered: Home, Score Home, Score Visitor, Visitor
+            log_cols = ['date_dt', 'home', 'final_score_home', 'final_score_visitor', 'visitor', 'arena']
             st.dataframe(
                 games_filtered[log_cols].sort_values(by='date_dt', ascending=False), 
                 width="stretch",

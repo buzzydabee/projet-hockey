@@ -101,68 +101,120 @@ def process_global_schedule(page, date_from):
         end_date = datetime(2026, 4, 30)
         start_str = start_date.strftime("%Y-%m-%d")
         end_str = end_date.strftime("%Y-%m-%d")
+        # Open Date Range Menu
+        # Screenshot 1: The user highlights the bar showing "30 prochains jours" or "Saison ...".
+        # It's usually a button or div with a calendar icon.
+        # We'll try to find it by the unique dynamic text or class structure.
+        print("Opening Date Range Picker...")
         
-        print(f"Applying filters (Attempt 1): {start_str}")
+        # Strategy: Find the button that contains year/date text.
+        try:
+            # Common Spordle Date Picker trigger
+            # It's often a button with class w-100 or similar. 
+            # We look for the one containing "2025" or "jours".
+            date_trigger = page.locator("button").filter(has_text=re.compile(r"Saison|jours|Date")).first
+            if not date_trigger.is_visible():
+                 # Fallback to div if it's not a button
+                 date_trigger = page.locator(".sp-date-picker, .date-picker-container").first
+            
+            date_trigger.click()
+            time.sleep(1)
+        except Exception as e:
+            print(f"Could not click date trigger: {e}")
+            # Bruteforce: Click top-center element?
+            page.mouse.click(960, 400) # Risky guess
+            time.sleep(1)
 
-        # Open Filter Menu
-        filter_btn = page.locator("button:has-text('Filtres')").first
-        filter_btn.wait_for(state="visible", timeout=10000)
-        filter_btn.click(force=True)
+        # Select '7 derniers jours' as base
+        # User tip: selecting this sets end date correctly and initializes inputs.
+        print("Selecting '7 derniers jours'...")
+        try:
+            # We look for the exact text.
+            page.locator("text=7 derniers jours").click()
+            time.sleep(1)
+        except Exception as e:
+            print(f"Could not find '7 derniers jours': {e}")
+            print("Trying to force 'Personnalisé'...")
+            try: page.locator("text=Personnalisé").click()
+            except: pass
+
+        # Override Dates
+        # Now that inputs are active/initlized, we overwrite them.
+        print(f"Overriding dates: {start_str} to {end_str}")
+        try:
+             # START DATE
+             page.fill("#date-picker-start", start_str)
+             # Force events to ensure React/Angular app picks it up
+             page.evaluate("document.getElementById('date-picker-start').dispatchEvent(new Event('input', {bubbles: true}))")
+             page.evaluate("document.getElementById('date-picker-start').dispatchEvent(new Event('change', {bubbles: true}))")
+             page.evaluate("document.getElementById('date-picker-start').dispatchEvent(new Event('blur', {bubbles: true}))")
+             
+             # END DATE
+             # User said end date is auto-set by '7 days', but we want to ensure we catch TODAY.
+             # If '7 days' excludes today, we might miss it.
+             # Safest is to overwrite it only if needed, OR just overwrite it always to be sure.
+             page.fill("#date-picker-end", end_str)
+             page.evaluate("document.getElementById('date-picker-end').dispatchEvent(new Event('input', {bubbles: true}))")
+             page.evaluate("document.getElementById('date-picker-end').dispatchEvent(new Event('change', {bubbles: true}))")
+             page.evaluate("document.getElementById('date-picker-end').dispatchEvent(new Event('blur', {bubbles: true}))")
+             
+             # Retrieve values to verify
+             actual_start = page.input_value("#date-picker-start")
+             print(f"DEBUG: Input Start Date is now: {actual_start}")
+             
+        except Exception as e:
+             print(f"Error filling inputs: {e}")
+
         time.sleep(1)
 
-        # Personnalise
-        page.locator("li").filter(has_text="Personnalisé").first.click()
-        time.sleep(1)
-
-        # Fill
-        page.fill("#date-picker-start", start_str)
-        page.evaluate("document.getElementById('date-picker-start').dispatchEvent(new Event('input', {bubbles: true}))")
-        page.fill("#date-picker-end", end_str)
-        page.evaluate("document.getElementById('date-picker-end').dispatchEvent(new Event('input', {bubbles: true}))")
-        
-        time.sleep(1)
-
-        # Apply & Intercept
+        # Apply
+        # Screenshot 3: Black 'Appliquer' button inside the dropdown.
         apply_btn = page.locator("button:has-text('Appliquer')").last
-        
-        with page.expect_response(lambda r: "api/sp/games" in r.url and r.status == 200, timeout=10000) as response_info:
-            apply_btn.click()
-            print("Clicked Appliquer.")
-        
-        data = response_info.value.json()
-        print(f"API Returned {len(data)} games.")
-        for g in data:
-            unique_ids.add(str(g.get("id")))
+        try:
+            with page.expect_response(lambda r: "api/sp/games" in r.url and r.status == 200, timeout=10000) as response_info:
+                apply_btn.click()
+                print("Clicked Appliquer. Waiting for API...")
+            
+            data = response_info.value.json()
+            print(f"DEBUG: API Request URL: {response_info.value.url}")
+            print(f"DEBUG: API Returned {len(data)} games.")
+            for g in data:
+                unique_ids.add(str(g.get("id")))
+
+        except Exception as e:
+            print(f"API Intercept Warning: {e}")
+            print("Swapping to fallback DOM scan...")
 
     except Exception as e:
-        print(f"Filter/API Error: {e}")
-        try:
-            page.screenshot(path="debug_filter_fail.png")
-        except: pass
+        print(f"Filter Logic Error: {e}")
 
-    # --- DOM SCAN ---
-    try:
-        print("Scanning DOM...")
-        # Check if we need to expand or scroll?
-        # Just scan what's there
-        dom_ids = page.evaluate(r"""
-            () => {
+    # --- FALLBACK: DOM SCAN ---
+    # Even if API worked, we double check the DOM if count is 0, just in case.
+    if len(unique_ids) == 0:
+        print("API returned 0 games. Scanning page HTML for game links...")
+        try:
+            # Wait for grid to load
+            page.wait_for_selector("a[href*='/game/']", timeout=5000)
+            
+            dom_ids = page.evaluate("""() => {
                 const ids = new Set();
                 document.querySelectorAll('a[href*="/game/"]').forEach(a => {
                     const m = a.getAttribute('href').match(/\/game\/(\d+)/);
                     if(m) ids.add(m[1]);
                 });
                 return Array.from(ids);
-            }
-        """)
-        print(f"DOM Scan found: {len(dom_ids)}")
-        for i in dom_ids:
-            unique_ids.add(str(i))
-            
-    except Exception as e:
-        print(f"DOM Scan Error: {e}")
+            }""")
+            print(f"DOM Scan found: {len(dom_ids)} games.")
+            for i in dom_ids:
+                unique_ids.add(str(i))
+        except Exception as e:
+            print(f"DOM Scan failed or no games visible: {e}")
 
-    print(f"Total Unique Games: {len(unique_ids)}")
+    print(f"Total Unique Games Found: {len(unique_ids)}")
+    
+    if len(unique_ids) == 0:
+        print("WARNING: No games found to download. Check filters on screen?")
+    
     for gid in unique_ids:
         download_pdf(gid)
 
