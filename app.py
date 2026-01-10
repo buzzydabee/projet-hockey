@@ -660,7 +660,9 @@ def main():
             # --- 1. DOWNLOAD ---
             status.write("Lancement du téléchargement...")
             # Use 'python -u' for unbuffered output to get real-time logs
-            cmd = ["python", "-u", "download_game_sheets.py"]
+            import sys
+            # Use sys.executable to ensure we use the SAME python environment (venv)
+            cmd = [sys.executable, "-u", "download_game_sheets.py"]
             
             process = subprocess.Popen(
                 cmd, 
@@ -725,7 +727,7 @@ def main():
             # --- 2. PROCESS ---
             if process.returncode == 0:
                 status_proc = st.sidebar.status("Mise à jour de la BD...", expanded=True)
-                cmd_proc = ["python", "-u", "process_gamesheets.py"]
+                cmd_proc = [sys.executable, "-u", "process_gamesheets.py"]
                 
                 # ... process setup same as beform ...
                 
@@ -773,7 +775,7 @@ def main():
             import subprocess
             try:
                 # Run Process Script Only (It deletes DB first)
-                result_rebuild = subprocess.run(["python", "process_gamesheets.py"], capture_output=True, text=True)
+                result_rebuild = subprocess.run([sys.executable, "process_gamesheets.py"], capture_output=True, text=True)
                 st.sidebar.success("Base de données reconstruite!")
                 if result_rebuild.stdout:
                     with st.sidebar.expander("Journal de reconstruction"):

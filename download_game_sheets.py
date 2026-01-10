@@ -128,7 +128,7 @@ def process_global_schedule(page, date_from):
         print("Scanning DOM...")
         # Check if we need to expand or scroll?
         # Just scan what's there
-        dom_ids = page.evaluate("""
+        dom_ids = page.evaluate(r"""
             () => {
                 const ids = new Set();
                 document.querySelectorAll('a[href*="/game/"]').forEach(a => {
