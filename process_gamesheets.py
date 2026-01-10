@@ -324,7 +324,7 @@ def main():
                 print("Database deleted.")
             except PermissionError:
                 print("Could not delete DB file (in use). Aborting reset.")
-                return
+                sys.exit(1)
 
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
