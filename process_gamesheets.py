@@ -451,10 +451,30 @@ def main():
             is_ot, is_so = check_ot_so(fields)
             
             # --- VALIDATION: Check for empty games ---
-            # If 0 shots recorded and 0-0 score, it's likely an empty/pre-game sheet
-            if shots_home == 0 and shots_vis == 0 and score_loc == 0 and score_vis == 0:
-                print(f"Skipping incomplete game (0-0, 0 shots): {filename}")
-                continue
+            # If 0 shots recorded and 0-0 score, it's likely an empty/pre-game sheet.
+            # EXCEPTION: If the game is TODAY, we keep it (Scheduled game).
+            # "game_date" is already in "YYYY-MM-DD" format (ISO).
+            
+            from datetime import datetime
+            today_iso = datetime.now().date().strftime("%Y-%m-%d")
+            
+            is_empty_stats = (shots_home == 0 and shots_vis == 0 and score_loc == 0 and score_vis == 0)
+            
+            if is_empty_stats:
+                if game_date == today_iso:
+                     # Keep it, but maybe log it
+                     print(f"Keeping TODAY's scheduled/empty game: {filename}")
+                else:
+                    print(f"Skipping past incomplete game: {filename}")
+                    try:
+                        # Optional: Verify if we should delete the PDF too?
+                        # User said "removed from DB", implies PDF might stay or go.
+                        # Using 'continue' skips DB insertion.
+                        pass
+                    except: pass
+                    continue
+            
+            # If score not tied, but is_ot false? Regulation result.
             
             # If score not tied, but is_ot false? Regulation result.
             
@@ -495,9 +515,35 @@ def main():
             print(f"Error processing {filename}: {e}")
             import traceback
             traceback.print_exc()
+            conn.commit()
+    
+    # --- CLEANUP ROUTINE ---
+    # Remove any existing games in DB that are:
+    # 1. Incomplete (0 shots, 0-0 score)
+    # 2. AND Older than TODAY (keeping today's scheduled games)
+    try:
+        from datetime import datetime
+        today_iso = datetime.now().date().strftime("%Y-%m-%d")
+        
+        # We need to join Fact tables or use a heuristic. 
+        # Since DimGame stores aggregated scores/shots, we can use that.
+        cursor.execute(f'''
+            DELETE FROM DimGame 
+            WHERE shots_for_home = 0 
+              AND shots_for_visitor = 0 
+              AND final_score_home = 0 
+              AND final_score_visitor = 0
+              AND date < '{today_iso}'
+        ''')
+        deleted = cursor.rowcount
+        conn.commit()
+        if deleted > 0:
+            print(f"Cleanup: Removed {deleted} old incomplete games from DB.")
+    except Exception as e:
+        print(f"Cleanup Error: {e}")
 
-    print(f"Database Update Complete. Skipped {skipped_count} existing files.")
     conn.close()
-
+    print(f"Done. Processed {len(TARGET_FILES)} files. Skipped {skipped_count}.")
+    
 if __name__ == "__main__":
     main()

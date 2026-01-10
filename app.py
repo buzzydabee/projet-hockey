@@ -95,6 +95,17 @@ def calculate_standings(games, penalties, goals):
             continue
 
         for _, row in t_games.iterrows():
+            # FILTER: Exclude Non-Final Games (0-0 score AND 0 shots)
+            # This handles "Today's Scheduled Games" which exist in DB but shouldn't count for stats.
+            is_empty_stats = (
+                row['final_score_home'] == 0 and 
+                row['final_score_visitor'] == 0 and 
+                row['shots_for_home'] == 0 and 
+                row['shots_for_visitor'] == 0
+            )
+            if is_empty_stats:
+                continue
+
             is_home = (row['home'] == team)
             
             s_us = row['final_score_home'] if is_home else row['final_score_visitor']
@@ -621,6 +632,14 @@ def main():
     # Filter Games by Date
     mask_date = (games['date_dt'].dt.date >= start_date) & (games['date_dt'].dt.date <= end_date)
     games = games[mask_date]
+    
+    # FILTER: Exclude Non-Final Games globally for Stats Calculation
+    # We only keep games that have happened (Score > 0 OR Shots > 0)
+    # This hides "Scheduled" games from the dashboard stats.
+    if not games.empty:
+        mask_final = (games['shots_for_home'] > 0) | (games['shots_for_visitor'] > 0) | \
+                     (games['final_score_home'] > 0) | (games['final_score_visitor'] > 0)
+        games = games[mask_final]
     
     
     # Capture Global Context (Filtered by Date, but NOT by Team/Stats Mode)
