@@ -355,11 +355,34 @@ def main():
                 continue
             
             # --- CHECK EXISTING ---
-            cursor.execute("SELECT 1 FROM DimGame WHERE game_id=?", (game_id,))
-            if cursor.fetchone():
-                skipped_count += 1
-                # print(f"Skipping existing game {game_id} (already in DB)")
-                continue
+            # Logic Update: If game exists, check if it's "incomplete" (Scheduled).
+            # If so, we SHOULD process it again (to update scores).
+            # If it's "Complete" -> Skip.
+            
+            cursor.execute('''
+                SELECT shots_for_home, shots_for_visitor, final_score_home, final_score_visitor 
+                FROM DimGame WHERE game_id=?
+            ''', (game_id,))
+            row = cursor.fetchone()
+            
+            if row:
+                # Check if incomplete
+                is_db_incomplete = (row[0] == 0 and row[1] == 0 and row[2] == 0 and row[3] == 0)
+                if not is_db_incomplete:
+                     skipped_count += 1
+                     # print(f"Skipping existing completed game {game_id}")
+                     continue
+                else:
+                     print(f"Updating existing incomplete/scheduled game: {game_id}")
+                     # We proceed to process. The INSERT OR REPLACE (or INSERT) might need to be REPLACE?
+                     # OR we delete the old row first to avoid PK collision.
+                     # Let's clean it up specifically.
+                     cursor.execute("DELETE FROM DimGame WHERE game_id=?", (game_id,))
+                     cursor.execute("DELETE FROM FactGoals WHERE game_id=?", (game_id,))
+                     cursor.execute("DELETE FROM FactPenalties WHERE game_id=?", (game_id,))
+                     cursor.execute("DELETE FROM FactGoalieStats WHERE game_id=?", (game_id,))
+                     conn.commit()
+            
             # ----------------------
 
             print(f"Processing new file: {filename}...")
