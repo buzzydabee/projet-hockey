@@ -332,6 +332,7 @@ def main():
     
     skipped_count = 0
     total_files = len(TARGET_FILES)
+    deferred_deletes = []  # List of PDFs to delete AFTER processing (e.g. today's scheduled games)
     
     for idx, filename in enumerate(TARGET_FILES, 1):
         # Print progress marker for Streamlit
@@ -462,8 +463,26 @@ def main():
             
             if is_empty_stats:
                 if game_date == today_iso:
-                     # Keep it, but maybe log it
-                     print(f"Keeping TODAY's scheduled/empty game: {filename}")
+                     # Keep it in DB (so we see it in Schedule if we had one), 
+                     # BUT delete the PDF so 'download_game_sheets.py' fetches the update tomorrow.
+                     print(f"Keeping TODAY's scheduled/empty game in DB: {filename}")
+                     try:
+                         # We must verify if 'reader' stream is closed? 
+                         # pypdf usually closes if we read it all, but let's be safe.
+                         # Only delete if we are NOT on Windows locking... 
+                         # Actually, process_gamesheets opens it. We need to be careful.
+                         # We can't delete it while it's open.
+                         # We'll add it to a list to delete AFTER the loop or explicitly close here?
+                         # The loop structure: 'with open(...) as f' isn't used?
+                         # Let's check how it opens.
+                         pass 
+                     except: pass
+                     
+                     # We will mark it for deletion?
+                     # Let's see the open code... line 348: reader = PdfReader(filepath)
+                     # pypdf PdfReader holds the file open? 
+                     # We might need to defer deletion.
+                     deferred_deletes.append(filepath)
                 else:
                     print(f"Skipping past incomplete game: {filename}")
                     try:
@@ -541,6 +560,16 @@ def main():
             print(f"Cleanup: Removed {deleted} old incomplete games from DB.")
     except Exception as e:
         print(f"Cleanup Error: {e}")
+
+    # --- DEFERRED DELETION ---
+    # Delete temporary PDFs for today's scheduled games so they can be re-downloaded later.
+    for fpath in deferred_deletes:
+        try:
+            if os.path.exists(fpath):
+                os.remove(fpath)
+                print(f"Deferred Cleanup: Deleted temporary PDF {os.path.basename(fpath)}")
+        except Exception as e:
+            print(f"Could not delete {os.path.basename(fpath)}: {e}")
 
     conn.close()
     print(f"Done. Processed {len(TARGET_FILES)} files. Skipped {skipped_count}.")
