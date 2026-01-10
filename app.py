@@ -678,16 +678,19 @@ def main():
                 # We do NOT write "Processing Team" to history to avoid a long list of 20 teams.
                 if "Downloaded" in text or "Téléchargement terminé" in text: return True
                 if "Found" in text and "unique games" in text:
-                    # Only show if count > 0
                     if " 0 unique games" in text: return False
                     return True
+                # CRITICAL: Allow Errors to be seen!
+                if any(x in text for x in ["Error", "Exception", "Traceback", "Fail", "CRITICAL"]): return True
                 return False
 
             # Stream output
+            full_logs = []
             for line in process.stdout:
                 try:
                     line = line.strip()
                     if line:
+                        full_logs.append(line)
                         # 1. Update Label (Real-time feedback)
                         if "Processing Team" in line:
                              parts = line.split("Team:")
@@ -699,7 +702,6 @@ def main():
                         elif "Found" in line and "unique games" in line:
                              status.update(label="Vérification des matchs...")
                         elif "Setting dates" in line:
-                             # Debug info, don't show in label to keep it clean, maybe just log?
                              pass
 
                         # 2. Write to Log History (Only important events)
@@ -717,6 +719,8 @@ def main():
             else:
                  status.update(label="Erreur durant le téléchargement", state="error")
                  st.sidebar.error("Erreur durant le téléchargement.")
+                 with st.sidebar.expander("Voir les logs d'erreur"):
+                     st.text("\n".join(full_logs[-20:])) # Show last 20 lines
                  
             # --- 2. PROCESS ---
             if process.returncode == 0:
