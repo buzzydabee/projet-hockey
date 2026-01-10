@@ -633,17 +633,20 @@ def main():
     mask_date = (games['date_dt'].dt.date >= start_date) & (games['date_dt'].dt.date <= end_date)
     games = games[mask_date]
     
-    # FILTER: Exclude Non-Final Games globally for Stats Calculation
-    # We only keep games that have happened (Score > 0 OR Shots > 0)
-    # This hides "Scheduled" games from the dashboard stats.
-    if not games.empty:
-        mask_final = (games['shots_for_home'] > 0) | (games['shots_for_visitor'] > 0) | \
-                     (games['final_score_home'] > 0) | (games['final_score_visitor'] > 0)
-        games = games[mask_final]
+    # FILTER: "Complete" games for Statistics
+    # We create a separate DataFrame for stats calculations (Standing, Players, Goalies)
+    # that ONLY includes finished games.
+    # The original 'games' DataFrame remains untouched so we can show Scheduled games in the Journal.
+    games_complete = games.copy()
+    if not games_complete.empty:
+        mask_final = (games_complete['shots_for_home'] > 0) | (games_complete['shots_for_visitor'] > 0) | \
+                     (games_complete['final_score_home'] > 0) | (games_complete['final_score_visitor'] > 0)
+        games_complete = games_complete[mask_final]
     
     
     # Capture Global Context (Filtered by Date, but NOT by Team/Stats Mode)
-    games_global = games.copy()
+    # MUST use Completed games for global stats context
+    games_global = games_complete.copy()
     valid_global_ids = games_global['game_id'].unique()
     goals_global = goals[goals['game_id'].isin(valid_global_ids)]
     penalties_global = penalties[penalties['game_id'].isin(valid_global_ids)]
@@ -887,8 +890,9 @@ def main():
 
     if view == "Tableau de bord":
         normalize = st.sidebar.checkbox("Normaliser par MJ", value=False)
-        render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, players, normalize, 
-                         games_global, goals_global, penalties_global, min_mj)
+        # Pass games_complete for Stats, but keep FULL games for Journal (Schedule)
+        render_dashboard(games_complete, goals, penalties, conn, selected_teams, stats_mode, players, normalize, 
+                         games_global, goals_global, penalties_global, min_mj, games_full=games)
     else:
         num_periods = st.sidebar.slider("Nombre de périodes", 1, 5, 3)
         render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, players, num_periods, min_mj)
@@ -896,7 +900,7 @@ def main():
     conn.close()
 
 def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, players, normalize=False,
-                     games_global=None, goals_global=None, penalties_global=None, min_mj=1):
+                     games_global=None, goals_global=None, penalties_global=None, min_mj=1, games_full=None):
     # --- STANDINGS ---
     # Custom Toggle to keep Button on Right BUT Content Full Width
     if 'leg_standings' not in st.session_state: st.session_state.leg_standings = False
@@ -1458,7 +1462,9 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
         st.header(f"Analyse d'Équipe : {selected_team}")
         
         # Filter Data
-        games_filtered = games[(games['home'] == selected_team) | (games['visitor'] == selected_team)]
+        # Use games_full if available to show Schedule in Journal, otherwise fallback to stats games
+        source_games = games_full if games_full is not None else games
+        games_filtered = source_games[(source_games['home'] == selected_team) | (source_games['visitor'] == selected_team)]
         
         # Prepare Dates map
         game_dates = games[['game_id', 'date_dt']]

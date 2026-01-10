@@ -125,15 +125,15 @@ def process_global_schedule(page, date_from):
             page.mouse.click(960, 400) # Risky guess
             time.sleep(1)
 
-        # Select '7 derniers jours' as base
-        # User tip: selecting this sets end date correctly and initializes inputs.
-        print("Selecting '7 derniers jours'...")
+        # Select '7 prochains jours' as base
+        # User requested switch to future-facing default to ensure future games are captured.
+        print("Selecting '7 prochains jours'...")
         try:
             # We look for the exact text.
-            page.locator("text=7 derniers jours").click()
+            page.locator("text=7 prochains jours").click()
             time.sleep(1)
         except Exception as e:
-            print(f"Could not find '7 derniers jours': {e}")
+            print(f"Could not find '7 prochains jours': {e}")
             print("Trying to force 'Personnalisé'...")
             try: page.locator("text=Personnalisé").click()
             except: pass
