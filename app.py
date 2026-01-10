@@ -773,6 +773,7 @@ def main():
     if st.sidebar.button("Reconstruire la BD (Local)"):
         with st.spinner("Reconstruction de la base de données..."):
             import subprocess
+            import sys
             try:
                 # Run Process Script Only (It deletes DB first)
                 result_rebuild = subprocess.run([sys.executable, "process_gamesheets.py"], capture_output=True, text=True)
