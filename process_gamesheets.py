@@ -331,8 +331,12 @@ def main():
     create_schema(cursor)
     
     skipped_count = 0
+    total_files = len(TARGET_FILES)
     
-    for filename in TARGET_FILES:
+    for idx, filename in enumerate(TARGET_FILES, 1):
+        # Print progress marker for Streamlit
+        print(f"PROGRESS:{idx}/{total_files}", flush=True)
+
         filepath = os.path.join(DOWNLOAD_DIR, filename)
         if not os.path.exists(filepath):
             print(f"File not found: {filepath}")

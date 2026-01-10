@@ -787,29 +787,68 @@ def main():
                 st.sidebar.error(f"Erreur de reconstruction: {e}")
 
     if st.sidebar.button("⚠️ Tout effacer et reconstruire"):
-        with st.spinner("Suppression et reconstruction complète..."):
-            import subprocess
-            import sys
-            try:
-                # Run Process Script with --reset flag
-                result_rebuild = subprocess.run([sys.executable, "process_gamesheets.py", "--reset"], capture_output=True, text=True)
+        # Progress Bar Logic
+        progress_bar = st.sidebar.progress(0)
+        status_text = st.sidebar.empty()
+        
+        import subprocess
+        import sys
+        
+        try:
+            # Use Popen to read output in real-time
+            process = subprocess.Popen(
+                [sys.executable, "process_gamesheets.py", "--reset"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1,            # Line buffered
+                encoding='utf-8'      # Ensure encoding
+            )
+            
+            full_logs = []
+            
+            while True:
+                line = process.stdout.readline()
+                if not line and process.poll() is not None:
+                    break
                 
-                if result_rebuild.returncode == 0:
-                    st.sidebar.success("Base de données réinitialisée et reconstruite!")
-                    # Cleanup cache
-                    st.cache_data.clear()
-                    time.sleep(1)
-                    st.rerun()
-                else:
-                     st.sidebar.error("Erreur lors de la réinitialisation.")
+                if line:
+                    full_logs.append(line)
+                    if line.startswith("PROGRESS:"):
+                        try:
+                            # Format: PROGRESS:5/100
+                            parts = line.strip().split(":")[1].split("/")
+                            current = int(parts[0])
+                            total = int(parts[1])
+                            percent = min(current / total, 1.0)
+                            progress_bar.progress(percent)
+                            status_text.text(f"Traitement: {current}/{total}")
+                        except:
+                            pass
+            
+            stdout, stderr = process.communicate() # Get remaining
+            if stdout: full_logs.append(stdout)
+            
+            if process.returncode == 0:
+                progress_bar.progress(1.0)
+                status_text.text("Terminé !")
+                st.sidebar.success("Base de données réinitialisée et reconstruite!")
                 
-                if result_rebuild.stdout:
-                    with st.sidebar.expander("Journal de reconstruction"):
-                        st.text(result_rebuild.stdout)
-                        if result_rebuild.stderr:
-                             st.text(f"Erreur: {result_rebuild.stderr}")
-            except Exception as e:
-                st.sidebar.error(f"Erreur de reconstruction: {e}")
+                # Cleanup cache
+                st.cache_data.clear()
+                time.sleep(1)
+                st.rerun()
+            else:
+                 st.sidebar.error("Erreur lors de la réinitialisation.")
+                 if stderr:
+                     st.sidebar.text(stderr)
+            
+            with st.sidebar.expander("Journal de reconstruction"):
+                st.text("".join(full_logs))
+
+        except Exception as e:
+            st.sidebar.error(f"Erreur de reconstruction: {e}")
+
     
     # --- VIEWS ---
     view = st.sidebar.radio("Vue", ["Tableau de bord", "Évolution"], index=0)
