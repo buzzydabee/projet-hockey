@@ -433,7 +433,12 @@ def main():
             # OT/SO
             is_ot, is_so = check_ot_so(fields)
             
-            # If tied score but no OT indicator? Ties exist in standings (N).
+            # --- VALIDATION: Check for empty games ---
+            # If 0 shots recorded and 0-0 score, it's likely an empty/pre-game sheet
+            if shots_home == 0 and shots_vis == 0 and score_loc == 0 and score_vis == 0:
+                print(f"Skipping incomplete game (0-0, 0 shots): {filename}")
+                continue
+            
             # If score not tied, but is_ot false? Regulation result.
             
             # Get Team IDs
