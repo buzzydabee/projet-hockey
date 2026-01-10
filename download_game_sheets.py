@@ -3,6 +3,9 @@ import time
 import requests
 import sqlite3
 import re
+import subprocess
+import shutil
+import sys
 from datetime import datetime, timedelta
 from playwright.sync_api import sync_playwright
 
@@ -146,8 +149,24 @@ def process_global_schedule(page, date_from):
     for gid in unique_ids:
         download_pdf(gid)
 
+def install_browsers():
+    """
+    Check if Playwright browsers are installed. If not, install them.
+    This is critical for Streamlit Cloud where the environment is ephemeral.
+    """
+    print("Checking Playwright browsers...")
+    # Check if chromium is roughly available or if we are in a non-local env
+    # Simple strategy: Just try to run the install command. It handles "already installed" gracefully.
+    try:
+        # Check if we can execute the command
+        subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], check=True)
+        print("Playwright browsers installed (or already present).")
+    except Exception as e:
+        print(f"Error installing browsers: {e}")
+
 def main():
     print("Starting Main...")
+    install_browsers()
     ensure_download_dir()
     with sync_playwright() as p:
         # headless=True for Streamlit Cloud / Production
