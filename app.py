@@ -505,6 +505,7 @@ def main():
         # Need Players table too for name resolution
         conn = sqlite3.connect(DB_NAME)
         players = pd.read_sql_query("SELECT * FROM DimPlayer", conn)
+        conn.close()
         
     except Exception as e:
         st.error(f"Error loading database: {e}")
