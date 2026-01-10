@@ -315,12 +315,17 @@ def check_ot_so(fields):
 
 
 def main():
-    # if os.path.exists(DB_NAME):
-    #     try:
-    #         os.remove(DB_NAME) # CONSTANT CLEAN STATE FOR DEV
-    #     except PermissionError:
-    #         print("Could not delete DB file (in use). Proceeding with incremental update.")
-        
+    import sys
+    if "--reset" in sys.argv:
+        print("RESET MODE: Deleting existing database...")
+        if os.path.exists(DB_NAME):
+            try:
+                os.remove(DB_NAME)
+                print("Database deleted.")
+            except PermissionError:
+                print("Could not delete DB file (in use). Aborting reset.")
+                return
+
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     create_schema(cursor)

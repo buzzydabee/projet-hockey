@@ -784,6 +784,25 @@ def main():
                 st.rerun()
             except Exception as e:
                 st.sidebar.error(f"Erreur de reconstruction: {e}")
+
+    if st.sidebar.button("⚠️ Tout effacer et reconstruire"):
+        with st.spinner("Suppression et reconstruction complète..."):
+            import subprocess
+            import sys
+            try:
+                # Run Process Script with --reset flag
+                result_rebuild = subprocess.run([sys.executable, "process_gamesheets.py", "--reset"], capture_output=True, text=True)
+                st.sidebar.success("Base de données réinitialisée et reconstruite!")
+                if result_rebuild.stdout:
+                    with st.sidebar.expander("Journal de reconstruction"):
+                        st.text(result_rebuild.stdout)
+                
+                # Cleanup cache
+                st.cache_data.clear()
+                time.sleep(1)
+                st.rerun()
+            except Exception as e:
+                st.sidebar.error(f"Erreur de reconstruction: {e}")
     
     # --- VIEWS ---
     view = st.sidebar.radio("Vue", ["Tableau de bord", "Évolution"], index=0)
