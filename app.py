@@ -1464,8 +1464,19 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
         # Filter Data
         # Use games_full if available to show Schedule in Journal, otherwise fallback to stats games
         source_games = games_full if games_full is not None else games
-        games_filtered = source_games[(source_games['home'] == selected_team) | (source_games['visitor'] == selected_team)]
+        games_filtered = source_games[(source_games['home'] == selected_team) | (source_games['visitor'] == selected_team)].copy()
         
+        # UI TWEAK: Hide scores if 0-0 (Scheduled games)
+        # Convert to string/object to allow empty strings
+        games_filtered['final_score_home'] = games_filtered['final_score_home'].astype(str)
+        games_filtered['final_score_visitor'] = games_filtered['final_score_visitor'].astype(str)
+        
+        # Loop to clear 0s if it looks initialized
+        # We assume if BOTH are "0", it's a scheduled game.
+        mask_scheduled = (games_filtered['final_score_home'] == '0') & (games_filtered['final_score_visitor'] == '0')
+        games_filtered.loc[mask_scheduled, 'final_score_home'] = ''
+        games_filtered.loc[mask_scheduled, 'final_score_visitor'] = ''
+
         # Prepare Dates map
         game_dates = games[['game_id', 'date_dt']]
         

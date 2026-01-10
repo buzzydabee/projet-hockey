@@ -178,6 +178,19 @@ def process_global_schedule(page, date_from):
             data = response_info.value.json()
             print(f"DEBUG: API Request URL: {response_info.value.url}")
             print(f"DEBUG: API Returned {len(data)} games.")
+            
+            # SAVE SCHEDULE JSON for metadata ingestion
+            # This allows us to import games that don't have PDFs yet (scheduled games)
+            # or where PDF download fails.
+            try:
+                import json
+                schedule_path = os.path.join(os.getcwd(), "scraped_schedule.json")
+                with open(schedule_path, "w", encoding="utf-8") as f:
+                    json.dump(data, f, ensure_ascii=False, indent=2)
+                print(f"Saved schedule metadata to: {schedule_path}")
+            except Exception as e:
+                print(f"Warning: Could not save schedule JSON: {e}")
+
             for g in data:
                 unique_ids.add(str(g.get("id")))
 

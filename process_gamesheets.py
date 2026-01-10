@@ -584,6 +584,62 @@ def main():
     except Exception as e:
         print(f"Cleanup Error: {e}")
 
+    # ---------------------------------------------------------
+    # NEW STEP: Ingest Schedule Metadata (for games without PDF)
+    # ---------------------------------------------------------
+    try:
+        schedule_path = os.path.join(os.getcwd(), "scraped_schedule.json")
+        if os.path.exists(schedule_path):
+            print(f"Processing schedule metadata from: {schedule_path}")
+            with open(schedule_path, "r", encoding="utf-8") as f:
+                schedule_data = json.load(f)
+            
+            import json
+            for g in schedule_data:
+                # Extract basic info
+                game_id = g.get('id')
+                if not game_id: continue
+                
+                # Format Dates
+                raw_date = g.get('date', "")
+                try: # "2026-01-09 20:30:00" -> "2026-01-09"
+                    iso_date = raw_date.split(" ")[0]
+                except: iso_date = raw_date
+                
+                arena = g.get('arena', {}).get('name', 'Unknown Arena')
+                home_team = g.get('homeTeam', {}).get('name', 'Unknown Home')
+                visitor_team = g.get('visitorTeam', {}).get('name', 'Unknown Visitor')
+                
+                cursor.execute("SELECT final_score_home FROM DimGame WHERE game_id=?", (game_id,))
+                row = cursor.fetchone()
+                
+                # Only insert if NOT exists. 
+                # If exists, ONLY update if it was 'Scheduled' (Score=0). Do NOT overwrite Final games.
+                should_update = False
+                if not row:
+                    should_update = True # Insert new
+                else:
+                    if row[0] == 0: should_update = True # Update existing scheduled
+                
+                if should_update:
+                    try:
+                        # Upsert logic for Schedule
+                        cursor.execute("""
+                            INSERT OR REPLACE INTO DimGame (
+                                game_id, date, home_team, visitor_team, 
+                                final_score_home, final_score_visitor, 
+                                shots_for_home, shots_for_visitor, arena
+                            ) VALUES (?, ?, ?, ?, 0, 0, 0, 0, ?)
+                        """, (game_id, iso_date, home_team, visitor_team, arena))
+                    except Exception as e:
+                        print(f"Error upserting schedule game {game_id}: {e}")
+            
+            conn.commit()
+            print("Schedule metadata ingestion complete.")
+            
+    except Exception as e:
+        print(f"Error processing schedule JSON: {e}")
+
     # --- DEFERRED DELETION ---
     # Delete temporary PDFs for today's scheduled games so they can be re-downloaded later.
     for fpath in deferred_deletes:
