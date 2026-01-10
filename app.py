@@ -817,6 +817,9 @@ def main():
     # Common Filter
     min_mj = st.sidebar.number_input("Min. Parties Jouées", min_value=1, value=2)
 
+    # Re-open connection for Analysis/Rendering phase
+    conn = sqlite3.connect(DB_NAME)
+
     if view == "Tableau de bord":
         normalize = st.sidebar.checkbox("Normaliser par MJ", value=False)
         render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, players, normalize, 
