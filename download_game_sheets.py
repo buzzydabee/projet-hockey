@@ -186,8 +186,8 @@ def main():
     install_browsers()
     ensure_download_dir()
     with sync_playwright() as p:
-        # headless=True for Streamlit Cloud / Production
-        browser = p.chromium.launch(headless=True)
+        # headless=False so the user can see the browser actions
+        browser = p.chromium.launch(headless=False)
         context = browser.new_context(viewport={"width": 1920, "height": 1080})
         page = context.new_page()
         start = get_optimal_start_date()
