@@ -17,6 +17,13 @@ MONTHS_MAP = {
 
 def parse_french_date(date_str):
     if not isinstance(date_str, str): return None
+    # 1. Try ISO Format (YYYY-MM-DD) - New Standard
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d")
+    except ValueError:
+        pass
+        
+    # 2. Try French Text (DD month YYYY) - Legacy
     try:
         parts = date_str.lower().split()
         if len(parts) >= 3:

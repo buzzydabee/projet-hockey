@@ -20,38 +20,28 @@ def get_optimal_start_date():
             return "2025-09-01"
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
-        cursor.execute("SELECT date FROM DimGame")
-        rows = cursor.fetchall()
+        # With ISO dates (YYYY-MM-DD), lexical sort IS chronological sort
+        cursor.execute("SELECT MAX(date) FROM DimGame")
+        row = cursor.fetchone()
         conn.close()
 
-        if not rows:
-             return "2025-09-01"
+        if row and row[0]:
+            # "2025-10-21" or "21 octobre 2025" (legacy)
+            # If legacy, we might still have issues, but assuming rebuild...
+            last_date_str = row[0]
+            
+            # Simple check: is it ISO?
+            if "-" in last_date_str:
+                last_date = datetime.strptime(last_date_str, "%Y-%m-%d")
+            else:
+                # Fallback for legacy data if user didn't rebuild
+                # (Re-using the parsing logic or just defaulting)
+                return "2025-09-01" 
+            
+            start_date = last_date - timedelta(days=7)
+            return start_date.strftime("%Y-%m-%d")
 
-        # French Month Map
-        MONTHS_MAP = {
-            "janvier": 1, "février": 2, "fevrier": 2, "mars": 3, "avril": 4, "mai": 5, "juin": 6,
-            "juillet": 7, "août": 8, "aout": 8, "septembre": 9, "octobre": 10, "novembre": 11, "décembre": 12, "decembre": 12
-        }
-
-        def parse_date(d_str):
-            try:
-                parts = d_str.lower().split()
-                # 21 octobre 2025
-                day = int(parts[0])
-                month = MONTHS_MAP.get(parts[1], 1)
-                year = int(parts[2])
-                return datetime(year, month, day)
-            except:
-                return datetime(2000, 1, 1)
-
-        dates = [parse_date(r[0]) for r in rows if r[0]]
-        if not dates:
-             return "2025-09-01"
-        
-        max_date = max(dates)
-        # Go back 7 days for safety
-        start_date = max_date - timedelta(days=7)
-        return start_date.strftime("%Y-%m-%d")
+        return "2025-09-01"
     except:
         return "2025-09-01"
 

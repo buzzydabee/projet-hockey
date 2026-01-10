@@ -408,7 +408,24 @@ def main():
                 continue
             # -----------------------
             
-            game_date = game_date_str
+            # -----------------------
+            # Date Conversion: French Text -> ISO 8601 (YYYY-MM-DD)
+            # "21 octobre 2025" -> "2025-10-21"
+            def french_to_iso(d_str):
+                MONTHS = {
+                    "janvier": 1, "février": 2, "fevrier": 2, "mars": 3, "avril": 4, "mai": 5, "juin": 6,
+                    "juillet": 7, "août": 8, "aout": 8, "septembre": 9, "octobre": 10, "novembre": 11, "décembre": 12, "decembre": 12
+                }
+                try:
+                    parts = d_str.lower().split()
+                    day = int(parts[0])
+                    month = MONTHS.get(parts[1], 1)
+                    year = int(parts[2])
+                    return f"{year}-{month:02d}-{day:02d}"
+                except:
+                    return d_str # Fallback to original if parsing fails
+
+            game_date = french_to_iso(game_date_str)
             arena = fields.get('locationName', {}).get('/V')
             
             team_loc_name = str(fields.get('TeamNameLoc', {}).get('/V')).replace('**', '').strip()
