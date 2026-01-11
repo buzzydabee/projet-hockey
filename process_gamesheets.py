@@ -590,11 +590,11 @@ def main():
     try:
         schedule_path = os.path.join(os.getcwd(), "scraped_schedule.json")
         if os.path.exists(schedule_path):
+            import json
             print(f"Processing schedule metadata from: {schedule_path}")
             with open(schedule_path, "r", encoding="utf-8") as f:
                 schedule_data = json.load(f)
             
-            import json
             for g in schedule_data:
                 # Extract basic info
                 game_id = g.get('id')
@@ -610,6 +610,18 @@ def main():
                 home_team = g.get('homeTeam', {}).get('name', 'Unknown Home')
                 visitor_team = g.get('visitorTeam', {}).get('name', 'Unknown Visitor')
                 
+                # Resolve Team IDs (Get or Create)
+                def get_team_id(cursor, t_name):
+                    cursor.execute("SELECT team_id FROM DimTeam WHERE team_name=?", (t_name,))
+                    res = cursor.fetchone()
+                    if res: return res[0]
+                    else:
+                        cursor.execute("INSERT INTO DimTeam (team_name) VALUES (?)", (t_name,))
+                        return cursor.lastrowid
+
+                hid = get_team_id(cursor, home_team)
+                vid = get_team_id(cursor, visitor_team)
+                
                 cursor.execute("SELECT final_score_home FROM DimGame WHERE game_id=?", (game_id,))
                 row = cursor.fetchone()
                 
@@ -624,13 +636,14 @@ def main():
                 if should_update:
                     try:
                         # Upsert logic for Schedule
+                        # We use IDs not names
                         cursor.execute("""
                             INSERT OR REPLACE INTO DimGame (
-                                game_id, date, home_team, visitor_team, 
+                                game_id, date, home_team_id, visitor_team_id, 
                                 final_score_home, final_score_visitor, 
                                 shots_for_home, shots_for_visitor, arena
                             ) VALUES (?, ?, ?, ?, 0, 0, 0, 0, ?)
-                        """, (game_id, iso_date, home_team, visitor_team, arena))
+                        """, (game_id, iso_date, hid, vid, arena))
                     except Exception as e:
                         print(f"Error upserting schedule game {game_id}: {e}")
             
