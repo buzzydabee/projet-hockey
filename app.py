@@ -1452,6 +1452,7 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                         "PEM/MJ",
                         format="%.2f"
                     ),
+                    "FJ": st.column_config.NumberColumn(format="%d"),
                      "Équipe": st.column_config.TextColumn(
                         "Équipe",
                         width="medium"
@@ -1539,12 +1540,18 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             # Reordered: Home, Score Home, Score Visitor, Visitor
             # Show relevant columns
             # Reordered: Date, Alignement, Arena, Home, Scores, Visitor
-            log_cols = ['date_dt', 'Alignement', 'home', 'final_score_home', 'final_score_visitor', 'visitor', 'arena']
+            # Add Link
+            # PDF URL: https://pdf.play.spordle.com/game/{game_id}?locale=fr
+            games_filtered['url'] = games_filtered['game_id'].apply(lambda x: f"https://pdf.play.spordle.com/game/{x}?locale=fr")
+            
+            log_cols = ['date_dt', 'Alignement', 'home', 'final_score_home', 'final_score_visitor', 'visitor', 'arena', 'url']
             st.dataframe(
                 games_filtered[log_cols].sort_values(by='date_dt', ascending=False), 
                 width="stretch",
+                hide_index=True,
                 column_config={
-                    "date_dt": st.column_config.DateColumn("Date", format="DD MMMM YYYY")
+                    "date_dt": st.column_config.DateColumn("Date", format="DD MMMM YYYY"),
+                    "url": st.column_config.LinkColumn("Feuille", display_text="📄 PDF")
                 }
             )
 

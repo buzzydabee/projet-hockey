@@ -677,7 +677,13 @@ def main():
                     iso_date = raw_date.split(" ")[0]
                 except: iso_date = raw_date
                 
-                arena = g.get('arena', {}).get('name', 'Unknown Arena')
+                # FIX: Arena in 'surface' -> 'name' or 'venue' -> 'name'
+                # From inspection: 'surface': {'venueId': '...', 'name': 'Glace 1', 'alias': 'LORETTEVILLE'}
+                surf = g.get('surface', {})
+                arena = surf.get('name', 'Unknown Arena')
+                if surf.get('alias'):
+                    arena = f"{surf.get('alias')} - {arena}"
+                
                 home_team = g.get('homeTeam', {}).get('name', 'Unknown Home')
                 # FIX: Spordle API uses 'awayTeam', not 'visitorTeam'
                 visitor_team = g.get('awayTeam', {}).get('name', 'Unknown Visitor')
