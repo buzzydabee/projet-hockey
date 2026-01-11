@@ -136,23 +136,73 @@ def process_goalies(cursor, game_id, team_id, side_prefix, fields):
             VALUES (?, ?, ?, ?, ?, ?)
         ''', (game_id, team_id, str(num).strip(), str(m), s_int, g_int))
 
+import unicodedata
+
+# ... (Previous imports)
+
+def normalize_name(name):
+    """
+    Normalize name for fuzzy comparison:
+    1. Lowercase
+    2. Remove accents
+    3. Replace hyphens/dots with spaces
+    4. Collapse multiple spaces
+    """
+    if not name: return ""
+    # Lowercase
+    n = name.lower()
+    # Remove accents
+    n = ''.join(c for c in unicodedata.normalize('NFD', n) if unicodedata.category(c) != 'Mn')
+    # Replace common separators with space
+    n = re.sub(r"[-'.]", " ", n)
+    # Collapse spaces
+    n = re.sub(r"\s+", " ", n).strip()
+    return n
+
 def get_or_create_team(cursor, team_name):
-    # Simple hash or auto-id. Let's use auto-id
+    """
+    Get Team ID with Fuzzy Matching.
+    If a similar name exists (normalized match), return its ID.
+    Otherwise create new.
+    """
+    if not team_name: return None
+    
+    target_norm = normalize_name(team_name)
+    
+    # 1. Try Exact Match First (Fast)
     cursor.execute("SELECT team_id FROM DimTeam WHERE team_name = ?", (team_name,))
     row = cursor.fetchone()
-    if row:
-        return row[0]
-    else:
-        cursor.execute("INSERT INTO DimTeam (team_name) VALUES (?)", (team_name,))
-        return cursor.lastrowid
+    if row: return row[0]
+    
+    # 2. Fetch ALL teams and checking fuzzy (Slow but safe, <100 teams)
+    cursor.execute("SELECT team_id, team_name FROM DimTeam")
+    all_teams = cursor.fetchall()
+    
+    for tid, tname in all_teams:
+        if normalize_name(tname) == target_norm:
+            # print(f"Fuzzy Match: '{team_name}' -> '{tname}' (ID: {tid})")
+            return tid
+            
+    # 3. Create New if no match
+    cursor.execute("INSERT INTO DimTeam (team_name) VALUES (?)", (team_name,))
+    return cursor.lastrowid
 
 def process_roster(cursor, team_id, side_prefix, fields):
     # side_prefix is 'Loc' or 'Vis'
-    # Roster fields like: LocNum1, LocName1, LocNum2, LocName2...
-    # We scan up to 30 (arbitrary max, likely less)
     
+    # Pre-fetch existing players for this team to do fuzzy check
+    cursor.execute("SELECT jersey_number, player_name FROM DimPlayer WHERE team_id=?", (team_id,))
+    existing_players = cursor.fetchall() # List of (jersey, name)
+    
+    # Helper to check existence
+    def player_exists(num, raw_name):
+        norm_input = normalize_name(raw_name)
+        for _, ex_name in existing_players:
+            if normalize_name(ex_name) == norm_input:
+                return True
+        return False
+
     for i in range(1, 30):
-        # Field names are like playerNumLoc1, playerNameLoc1
         num_key = f"playerNum{side_prefix}{i}"
         name_key = f"playerName{side_prefix}{i}"
         
@@ -160,18 +210,19 @@ def process_roster(cursor, team_id, side_prefix, fields):
         name = fields.get(name_key, {}).get('/V')
         
         if num and name:
-            # Clean up
             num = str(num).strip()
-            name = str(name).strip().upper() # standardized uppercase
+            name = str(name).strip().upper()
             
-            # Insert if not exists
-            cursor.execute('''
-                INSERT OR IGNORE INTO DimPlayer (team_id, jersey_number, player_name)
-                VALUES (?, ?, ?)
-            ''', (team_id, num, name))
+            # Fuzzy Check
+            if not player_exists(num, name):
+                cursor.execute('''
+                    INSERT OR IGNORE INTO DimPlayer (team_id, jersey_number, player_name)
+                    VALUES (?, ?, ?)
+                ''', (team_id, num, name))
+                # Update local cache to prevent duplicate in same game loop
+                existing_players.append((num, name))
             
-    # Also scan Goalies (often separate)
-    # goalerNumLoc1, goalerNameLoc1
+    # Goalies
     for i in range(1, 4):
         num_key = f"goalerNum{side_prefix}{i}"
         name_key = f"goalerName{side_prefix}{i}"
@@ -181,12 +232,14 @@ def process_roster(cursor, team_id, side_prefix, fields):
         
         if num and name:
              num = str(num).strip()
-             name = str(name).strip().upper().replace('*', '').strip() # Remove starter asterisk
+             name = str(name).strip().upper().replace('*', '').strip()
              
-             cursor.execute('''
-                INSERT OR IGNORE INTO DimPlayer (team_id, jersey_number, player_name)
-                VALUES (?, ?, ?)
-            ''', (team_id, num, name))
+             if not player_exists(num, name):
+                 cursor.execute('''
+                    INSERT OR IGNORE INTO DimPlayer (team_id, jersey_number, player_name)
+                    VALUES (?, ?, ?)
+                ''', (team_id, num, name))
+                 existing_players.append((num, name))
 
 def process_goals(cursor, game_id, team_id, side_prefix, fields):
     # Goals: goalPeriodLocX, goalTimeLocX, scoreLocX (this is jersey?), assistOneLocX, assistTwoLocX
@@ -611,16 +664,9 @@ def main():
                 visitor_team = g.get('visitorTeam', {}).get('name', 'Unknown Visitor')
                 
                 # Resolve Team IDs (Get or Create)
-                def get_team_id(cursor, t_name):
-                    cursor.execute("SELECT team_id FROM DimTeam WHERE team_name=?", (t_name,))
-                    res = cursor.fetchone()
-                    if res: return res[0]
-                    else:
-                        cursor.execute("INSERT INTO DimTeam (team_name) VALUES (?)", (t_name,))
-                        return cursor.lastrowid
-
-                hid = get_team_id(cursor, home_team)
-                vid = get_team_id(cursor, visitor_team)
+                # Use global fuzzy update
+                hid = get_or_create_team(cursor, home_team)
+                vid = get_or_create_team(cursor, visitor_team)
                 
                 cursor.execute("SELECT final_score_home FROM DimGame WHERE game_id=?", (game_id,))
                 row = cursor.fetchone()
