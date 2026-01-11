@@ -1082,16 +1082,17 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
     if games_global is not None:
         st_global = calculate_standings(games_global, penalties_global, goals_global)
         if not st_global.empty:
-             # Rename Global to match French Schema for Min/Max lookup
-             # Explicitly ensure the map is available or define it here if needed
-             rename_map_local = {
-                 'Team': 'Équipe', 'GP': 'MJ', 'W': 'V', 'L': 'D', 'T': 'N',
-                 'GF': 'BP', 'GA': 'BC', 'PP%': '%AN', 'PK%': '%DN', 'PIM': 'PUN'
-             }
-             st_global = st_global.rename(columns=rename_map_local)
-             
-             # Robust calculation
-             if 'MJ' in st_global.columns:
+            # Rename Global to match French Schema for Min/Max lookup
+            # Explicitly ensure the map is available or define it here if needed
+            rename_map_local = {
+                'Team': 'Équipe', 'GP': 'MJ', 'W': 'V', 'L': 'D', 'T': 'N',
+                'GF': 'BP', 'GA': 'BC', 'PP%': '%AN', 'PK%': '%DN', 'PIM': 'PUN',
+                'PP% Rec': '%AN (Rec)', 'PK% Rec': '%DN (Rec)'
+            }
+            st_global = st_global.rename(columns=rename_map_local)
+            
+            # Robust calculation
+            if 'MJ' in st_global.columns:
                  # Always calculate PTS/MJ as it is in the main table default
                  st_global['PTS/MJ'] = st_global.apply(lambda r: round(r['PTS']/r['MJ'], 3) if r['MJ']>0 else 0, axis=1)
 
@@ -1100,23 +1101,120 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                         # Verify source column exists (e.g. 'V', 'D')
                         if c in st_global.columns:
                             st_global[new_c] = st_global.apply(lambda r: r[c]/r['MJ'] if r['MJ'] > 0 else 0, axis=1)
+            # STYLING
+            # Center stats columns (Skip Team, Rang)
+            # Note: Rang is now a regular column after reset_index below
+            
+            # Convert Index to Column "Rang"
+            st_global.index.name = "Rang"
+            st_global = st_global.reset_index()
+            
+            # Updated Cols Display: Rang + others
+            cols_display = ['Rang'] + cols_data 
+            
+            # Define stats_cols for centering (exclude text columns)
+            stats_cols = [c for c in cols_display if c not in ['Rang', 'Équipe']]
+            
+            # Apply Style
+            styler_standings = st_global[cols_display].style.set_properties(
+                subset=list(set(cols_display) & set(stats_cols)), # Center numbers only
+                **{'text-align': 'center'}
+            ).set_properties(
+                subset=['Rang', 'Équipe'], # White text for names/rank
+                **{'color': '#ffffff', 'font-weight': 'bold'}
+            ).set_table_styles([
+                {'selector': 'th', 'props': [('text-align', 'center !important')]},
+                {'selector': 'td', 'props': [('text-align', 'center !important')]}
+            ]).hide(axis='index') # Hide the default pandas index since we have Rang column
+            
+            # Gradients logic remains same
+            for col in std_pos:
+                vmin, vmax = None, None
+                if games_global is not None and not st_global.empty and col in st_global.columns:
+                     vmin = st_global[col].min()
+                     vmax = st_global[col].max()
+                styler_standings = styler_standings.background_gradient(cmap=cmap_pos, subset=[col], vmin=vmin, vmax=vmax)
+        
+            for col in std_neg:
+                vmin, vmax = None, None
+                if games_global is not None and not st_global.empty and col in st_global.columns:
+                    vmin = st_global[col].min()
+                    vmax = st_global[col].max()
+                styler_standings = styler_standings.background_gradient(cmap=cmap_neg, subset=[col], vmin=vmin, vmax=vmax)
+            
+            # --- HELPER FOR SCROLLABLE TABLES ---
+            # ... (helper is defined below, no change needed there except ensuring single row)
 
-             
-    # Apply gradients with explicit vmin/vmax
-    for col in std_pos:
-        vmin, vmax = None, None
-        if games_global is not None and not st_global.empty and col in st_global.columns:
-             vmin = st_global[col].min()
-             vmax = st_global[col].max()
-        styler_standings = styler_standings.background_gradient(cmap=cmap_pos, subset=[col], vmin=vmin, vmax=vmax)
+    def render_scrollable_table(styler, height=400):
+        """
+        Renders a Pandas Styler as a scrollable HTML table with sticky headers
+        and compact styling.
+        """
+        # Generate HTML from Styler
+        html = styler.to_html(escape=False)
+        
+        # Custom CSS for the container and table
+        # - container: fixed height, scrollable
+        # - th: sticky top, background color (dark mode friendly), no wrap
+        # - td: no wrap, reduced padding
+        css = f"""
+        <style>
+            .scroll-table-container {{
+                height: {height}px;
+                overflow-y: auto;
+                overflow-x: auto;
+                border: 1px solid #444;
+                border-radius: 4px;
+            }}
+            .scroll-table-container table {{
+                width: 100%;
+                border-collapse: separate; /* Required for sticky to work correctly with borders sometimes, but collapse is usually fine. switching to separate can help z-index stacking */
+                border-spacing: 0;
+            }}
+            
+            /* Main Header: Sticky Top */
+            .scroll-table-container thead th {{
+                position: sticky; 
+                top: 0; 
+                background-color: #262730; /* Streamlit dark secondary */
+                color: white;
+                z-index: 1000;
+                white-space: nowrap;
+                padding: 8px; /* Compact header */
+                text-align: center;
+                border-bottom: 1px solid #444;
+            }}
+            
+            /* Row Index (Rank): Sticky Left (Optional but good) or at least NOT sticky top */
+            .scroll-table-container tbody th {{
+                position: sticky;
+                left: 0;
+                z-index: 999;
+                background-color: #262730;
+                color: white;
+                white-space: nowrap;
+                padding: 4px 8px;
+                vertical-align: middle;
+                border-right: 1px solid #444;
+            }}
+            
+            .scroll-table-container td {{
+                white-space: nowrap;
+                padding: 4px 8px; /* Reduced row height */
+                vertical-align: middle;
+            }}
+            
+            /* Hover effect for rows */
+            .scroll-table-container tr:hover td {{
+                background-color: #363940;
+            }}
+        </style>
+        """
+        
+        # Inject styling and HTML
+        st.markdown(css, unsafe_allow_html=True)
+        st.markdown(f'<div class="scroll-table-container">{html}</div>', unsafe_allow_html=True)
 
-    for col in std_neg:
-        vmin, vmax = None, None
-        if games_global is not None and not st_global.empty and col in st_global.columns:
-             vmin = st_global[col].min()
-             vmax = st_global[col].max()
-        styler_standings = styler_standings.background_gradient(cmap=cmap_neg, subset=[col], vmin=vmin, vmax=vmax)
-    
     # --- FORMATTING (for HTML) ---
     # Apply precise formatting
     formatter = {}
@@ -1124,7 +1222,7 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
     # Decimals (PTS/MJ, M/G ratios) - 3 decimals
     for c in cols_data:
         if 'PTS/MJ' in c or '/MJ' in c:
-            formatter[c] = "{:.3f}"
+            formatter[c] = "{:.2f}"
         elif '%' in c or 'Arr' in c or 'Moy' in c: # Percentages and GAA
             if '%' in c or 'Arr' in c:
                formatter[c] = "{:.1f}%"
@@ -1135,16 +1233,8 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
     # Apply format
     styler_standings = styler_standings.format(formatter)
     
-    # Hide Index (Rang) ? User wants Rank. 
-    # Pandas HTML includes index by default. 
-    # Rank is in Index "Rang".
-    
-    # Remove borders from styler itself to rely on CSS?
-    # Hide index name?
-    
-    # Render HTML
-    html = styler_standings.to_html(escape=False)
-    st.markdown(html, unsafe_allow_html=True)
+    # Render using Helper
+    render_scrollable_table(styler_standings, height=500)
     
     # --- GOALIE STATS ---
     if 'leg_goalies' not in st.session_state: st.session_state.leg_goalies = False
@@ -1212,29 +1302,29 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                 cols = ['Nom', 'Équipe', 'MJ'] + norm_order + orig_order
             
             # STYLING
-            # Center stats columns (Skip Nom, Team)
-            stats_cols_g = cols[2:] 
+            # Center stats columns (Skip Rang, Nom, Team)
             
             # Pin Nom: Keep it as a column instead of Index to ensure white color
             # gdf.set_index("Nom", append=True, inplace=True) # REMOVED to fix color
             gdf.index.name = "Rang"
+            gdf = gdf.reset_index()
             
             # Cols to display (Nom is now included in columns)
-            cols_display = cols 
+            cols_display = ['Rang'] + cols 
             
+            # Center logic: anything that is numeric
+            stats_cols_g = [c for c in cols_display if c not in ['Rang', 'Nom', 'Équipe', 'TG_str']]
+
             styler_gdf = gdf[cols_display].style.set_properties(
                 subset=list(set(cols_display) & set(stats_cols_g)), # Center numbers only
                 **{'text-align': 'center'}
             ).set_properties(
-                subset=['Nom'],
+                subset=['Rang', 'Nom'], # White
                 **{'color': '#ffffff', 'font-weight': 'bold'}
             ).set_table_styles([
                 {'selector': 'th', 'props': [('text-align', 'center !important')]},
                 {'selector': 'td', 'props': [('text-align', 'center !important')]}
-            ])
-            
-            g_pos = [c for c in cols_display if get_column_type(c) == 'pos']
-            g_neg = [c for c in cols_display if get_column_type(c) == 'neg']
+            ]).hide(axis='index')
             
             g_pos = [c for c in cols_display if get_column_type(c) == 'pos']
             g_neg = [c for c in cols_display if get_column_type(c) == 'neg']
@@ -1275,12 +1365,12 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                 if 'Moy' in c: g_fmt[c] = "{:.2f}"
                 elif '%Arr' in c: g_fmt[c] = "{:.3f}"
                 elif '/MJ' in c: g_fmt[c] = "{:.2f}"
-                elif c not in ['Nom', 'Équipe', 'TG_str']: g_fmt[c] = "{:.0f}"
+                elif c not in ['Rang', 'Nom', 'Équipe', 'TG_str']: g_fmt[c] = "{:.0f}"
             
             styler_gdf = styler_gdf.format(g_fmt)
             
-            html_g = styler_gdf.to_html(escape=False)
-            st.markdown(html_g, unsafe_allow_html=True)
+            # Render Goalies
+            render_scrollable_table(styler_gdf, height=400)
     
     # --- ADVANCED PLAYER STATS ---
     if 'leg_players' not in st.session_state: st.session_state.leg_players = False
@@ -1398,19 +1488,23 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             # Pin Nom: Keep as column
             # p_df.set_index("Nom", append=True, inplace=True) # REMOVED
             p_df.index.name = "Rang"
+            p_df = p_df.reset_index()
             
-            cols_display_p = cols
+            cols_display_p = ['Rang'] + cols
+            
+            # Recalculate stats cols for centering (exclude text cols)
+            stats_cols_p = [c for c in cols_display_p if c not in ['Rang', 'Nom', 'Équipe']]
             
             styler_pdf = p_df[cols_display_p].style.set_properties(
                 subset=list(set(cols_display_p) & set(stats_cols_p)),
                 **{'text-align': 'center'}
             ).set_properties(
-                subset=['Nom'],
+                subset=['Rang', 'Nom'],
                 **{'color': '#ffffff', 'font-weight': 'bold'}
             ).set_table_styles([
                 {'selector': 'th', 'props': [('text-align', 'center !important')]},
                 {'selector': 'td', 'props': [('text-align', 'center !important')]}
-            ])
+            ]).hide(axis='index')
 
             p_pos = [c for c in cols_display_p if get_column_type(c) == 'pos']
             p_neg = [c for c in cols_display_p if get_column_type(c) == 'neg']
@@ -1422,12 +1516,12 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             p_fmt = {}
             for c in cols_display_p:
                 if '/MJ' in c or 'PTS/MJ' in c: p_fmt[c] = "{:.2f}"
-                elif c not in ['Nom', 'Équipe']: p_fmt[c] = "{:.0f}" # Integers for counts
+                elif c not in ['Rang', 'Nom', 'Équipe']: p_fmt[c] = "{:.0f}" # Integers for counts
             
             styler_pdf = styler_pdf.format(p_fmt)
             
-            html_p = styler_pdf.to_html(escape=False)
-            st.markdown(html_p, unsafe_allow_html=True)
+            # Render Players
+            render_scrollable_table(styler_pdf, height=450)
 
 
     # --- TEAM METRICS (Single Team Only) ---
@@ -1515,7 +1609,8 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             log_cols = ['date_dt', 'Alignement', 'home', 'final_score_home', 'final_score_visitor', 'visitor', 'arena', 'url']
             st.dataframe(
                 games_filtered[log_cols].sort_values(by='date_dt', ascending=False), 
-                width="stretch",
+                use_container_width=True,
+                height=500,
                 hide_index=True,
                 column_config={
                     "date_dt": st.column_config.DateColumn("Date", format="DD MMMM YYYY"),
@@ -1529,7 +1624,8 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             cols_p = ['date_dt'] + [c for c in penalties_filtered.columns if c not in ['date_dt', 'game_id', 'team_id']]
             st.dataframe(
                 penalties_filtered[cols_p].sort_values(by='date_dt', ascending=False), 
-                width="stretch",
+                use_container_width=True,
+                height=500,
                 column_config={
                     "date_dt": st.column_config.DateColumn("Date", format="DD MMMM YYYY")
                 }
@@ -1562,7 +1658,8 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
              if not goals_filtered.empty:
                  st.dataframe(
                     goals_filtered[cols_g_show].sort_values(by='date_dt', ascending=False),
-                    width="stretch",
+                    use_container_width=True,
+                    height=500,
                     column_config={
                         "date_dt": st.column_config.DateColumn("Date", format="DD MMMM YYYY")
                     }
