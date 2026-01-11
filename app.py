@@ -549,38 +549,35 @@ def main():
     # --- CSS HACK FOR COMPACT INSTANCE ---
     st.markdown("""
     <style>
-        /* Force smaller font in dataframes */
-        [data-testid="stDataFrame"] {
-            font-size: 13px !important;
-        }
-        /* Compacting Rows */
-        div[data-testid="stDataFrame"] div[role="gridcell"] {
-            padding-top: 2px !important;
-            padding-bottom: 2px !important;
-            line-height: 1.1 !important;
-            min-height: 25px !important; 
-        }
-        div[data-testid="stDataFrame"] div[role="row"] {
-            min-height: 25px !important;
+        /* CSS for Custom HTML Tables */
+        table.dataframe {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            font-family: sans-serif;
         }
         
-        /* Force Centering of Headers and Cells */
-        div[data-testid="stDataFrame"] div[role="columnheader"] > div, 
-        div[data-testid="stDataFrame"] div[role="gridcell"] > div {
-            display: flex !important;
-            justify-content: center !important;
+        table.dataframe th, table.dataframe td {
             text-align: center !important;
+            vertical-align: middle !important;
+            padding: 4px 2px !important; /* Compact padding */
+            border: 1px solid #2d2d2d;
+            white-space: nowrap; /* Prevent wrapping for compactness */
         }
         
-        /* Ensure the text itself is centered */
-        div[data-testid="stDataFrame"] div[role="gridcell"] p,
-        div[data-testid="stDataFrame"] div[role="columnheader"] p {
-             text-align: center !important;
+        table.dataframe th {
+            background-color: #0e1117;
+            font-weight: bold;
+            color: white;
+            padding-bottom: 8px !important;
+            padding-top: 8px !important;
         }
-
-        /* Exception: Team Name (First Column) usually should be Left, but 
-           CSS nth-child is tricky with virtual scroll. 
-           We accept centered Team Names for now to guarantee stats are centered. */
+        
+        /* Alternating rows for readability if needed, but heatmap usually covers it */
+        /* table.dataframe tr:nth-child(even) { background-color: #161a24; } */
+        
+        /* Specific column alignments if needed (but user wants all centered) */
+        
     </style>
     """, unsafe_allow_html=True)
     
@@ -1120,58 +1117,34 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
              vmax = st_global[col].max()
         styler_standings = styler_standings.background_gradient(cmap=cmap_neg, subset=[col], vmin=vmin, vmax=vmax)
     
-    st.dataframe(
-        styler_standings, 
-        width="stretch",
-        column_config={
-
-            "PTS/MJ": st.column_config.ProgressColumn(
-                "PTS/MJ",
-                format="%.3f",
-                min_value=0,
-                max_value=max_pmj,
-                width="small"
-            ),
-             "PTS": st.column_config.NumberColumn(
-                "PTS",
-                format="%d",
-                width="small"
-            ),
-             "FJ": st.column_config.NumberColumn(
-                "FJ",
-                format="%d",
-                width="small"
-            ),
-            "%AN": st.column_config.NumberColumn(
-                "%AN",
-                format="%.1f%%",
-                width="small"
-            ),
-             "%AN (Rec)": st.column_config.NumberColumn(
-                "%AN (Rec)",
-                format="%.1f%%",
-                width="small"
-            ),
-            "%DN": st.column_config.NumberColumn(
-                "%DN",
-                format="%.1f%%",
-                width="small"
-            ),
-             "%DN (Rec)": st.column_config.NumberColumn(
-                "%DN (Rec)",
-                format="%.1f%%",
-                width="small"
-            ),
-
-            # Add formats for normalized cols (defaults to %.2f usually but let's be explicit if needed or rely on default)
-            **({c: st.column_config.NumberColumn(format="%.2f", width="small") for c in cols_to_show if '/MJ' in c} if normalize else {}),
-            
-            # Catch-all for other numeric columns to be small
-            # Exclude already defined ones? column_config merges. 
-            # We can iterate over remaining numeric cols
-            **{c: st.column_config.NumberColumn(width="small") for c in cols_to_show if c not in ['Équipe', 'PTS/MJ', 'PTS', 'FJ', '%AN', '%AN (Rec)', '%DN', '%DN (Rec)'] and get_column_type(c) in ['pos', 'neg', 'neu']}
-        }
-    )
+    # --- FORMATTING (for HTML) ---
+    # Apply precise formatting
+    formatter = {}
+    
+    # Decimals (PTS/MJ, M/G ratios) - 3 decimals
+    for c in cols_data:
+        if 'PTS/MJ' in c or '/MJ' in c:
+            formatter[c] = "{:.3f}"
+        elif '%' in c or 'Arr' in c or 'Moy' in c: # Percentages and GAA
+            if '%' in c or 'Arr' in c:
+               formatter[c] = "{:.1f}%"
+            # Moy is handled in goalies but generic rule here
+        elif c in ['PTS', 'V', 'D', 'N', 'FJ', 'BP', 'BC', 'DIFF', 'PUN', 'GP', 'MJ']: 
+             formatter[c] = "{:.0f}"
+             
+    # Apply format
+    styler_standings = styler_standings.format(formatter)
+    
+    # Hide Index (Rang) ? User wants Rank. 
+    # Pandas HTML includes index by default. 
+    # Rank is in Index "Rang".
+    
+    # Remove borders from styler itself to rely on CSS?
+    # Hide index name?
+    
+    # Render HTML
+    html = styler_standings.to_html(escape=False)
+    st.markdown(html, unsafe_allow_html=True)
     
     # --- GOALIE STATS ---
     if 'leg_goalies' not in st.session_state: st.session_state.leg_goalies = False
@@ -1252,6 +1225,9 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             styler_gdf = gdf[cols_display].style.set_properties(
                 subset=list(set(cols_display) & set(stats_cols_g)), # Center numbers only
                 **{'text-align': 'center'}
+            ).set_properties(
+                subset=['Nom'],
+                **{'color': '#ffffff', 'font-weight': 'bold'}
             ).set_table_styles([
                 {'selector': 'th', 'props': [('text-align', 'center !important')]},
                 {'selector': 'td', 'props': [('text-align', 'center !important')]}
@@ -1293,24 +1269,18 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                      vmax = df_goal_global[col].max()
                 styler_gdf = styler_gdf.background_gradient(cmap=cmap_neg, subset=[col], vmin=vmin, vmax=vmax)
             
-            st.dataframe(
-                styler_gdf, 
-                width="stretch",
-                column_config={
-                     "%Arr": st.column_config.NumberColumn(
-                        "%Arr",
-                        format="%.3f",
-                        width="small"
-                    ),
-                    "Moy": st.column_config.NumberColumn(
-                        "Moy",
-                        format="%.2f",
-                        width="small"
-                    ),
-                    **({c: st.column_config.NumberColumn(format="%.2f", width="small") for c in cols if '/MJ' in c} if normalize else {}),
-                    **{c: st.column_config.NumberColumn(width="small") for c in cols if c not in ['Nom', 'Équipe', '%Arr', 'Moy'] and isinstance(c, str)}
-                }
-            )
+            # Format
+            g_fmt = {}
+            for c in cols_display:
+                if 'Moy' in c: g_fmt[c] = "{:.2f}"
+                elif '%Arr' in c: g_fmt[c] = "{:.3f}"
+                elif '/MJ' in c: g_fmt[c] = "{:.2f}"
+                elif c not in ['Nom', 'Équipe', 'TG_str']: g_fmt[c] = "{:.0f}"
+            
+            styler_gdf = styler_gdf.format(g_fmt)
+            
+            html_g = styler_gdf.to_html(escape=False)
+            st.markdown(html_g, unsafe_allow_html=True)
     
     # --- ADVANCED PLAYER STATS ---
     if 'leg_players' not in st.session_state: st.session_state.leg_players = False
@@ -1434,6 +1404,9 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             styler_pdf = p_df[cols_display_p].style.set_properties(
                 subset=list(set(cols_display_p) & set(stats_cols_p)),
                 **{'text-align': 'center'}
+            ).set_properties(
+                subset=['Nom'],
+                **{'color': '#ffffff', 'font-weight': 'bold'}
             ).set_table_styles([
                 {'selector': 'th', 'props': [('text-align', 'center !important')]},
                 {'selector': 'td', 'props': [('text-align', 'center !important')]}
@@ -1445,38 +1418,16 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             if p_pos: styler_pdf = styler_pdf.background_gradient(cmap=cmap_pos, subset=p_pos)
             if p_neg: styler_pdf = styler_pdf.background_gradient(cmap=cmap_neg, subset=p_neg)
             
-            st.dataframe(
-                styler_pdf, 
-                use_container_width=True,
-                column_config={
-                    "PTS": st.column_config.ProgressColumn(
-                        "PTS",
-                        help="Points au total",
-                        format="%d",
-                        min_value=0,
-                        max_value=int(max(p_df['PTS'].max(), 1)),
-                        width="small"
-                    ),
-                    "PTS/MJ": st.column_config.NumberColumn(
-                        "PTS/MJ",
-                        format="%.2f",
-                        width="small"
-                    ),
-                    "PEM/MJ": st.column_config.NumberColumn(
-                        "PEM/MJ",
-                        format="%.2f",
-                        width="small"
-                    ),
-                    "FJ": st.column_config.NumberColumn(format="%d", width="small"),
-                     "Équipe": st.column_config.TextColumn(
-                        "Équipe",
-                        width="medium"
-                    ),
-                    **({c: st.column_config.NumberColumn(format="%.2f", width="small") for c in cols if '/MJ' in c} if normalize else {}),
-                     # Catch-All for other stats (B, A, PEM, etc) -> Small
-                    **{c: st.column_config.NumberColumn(width="small") for c in cols if c not in ['Nom', 'Équipe', 'PTS', 'PTS/MJ', 'PEM/MJ', 'FJ']}
-                }
-            )
+            # Format
+            p_fmt = {}
+            for c in cols_display_p:
+                if '/MJ' in c or 'PTS/MJ' in c: p_fmt[c] = "{:.2f}"
+                elif c not in ['Nom', 'Équipe']: p_fmt[c] = "{:.0f}" # Integers for counts
+            
+            styler_pdf = styler_pdf.format(p_fmt)
+            
+            html_p = styler_pdf.to_html(escape=False)
+            st.markdown(html_p, unsafe_allow_html=True)
 
 
     # --- TEAM METRICS (Single Team Only) ---
