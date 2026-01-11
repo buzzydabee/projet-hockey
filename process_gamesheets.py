@@ -661,14 +661,15 @@ def main():
                 
                 arena = g.get('arena', {}).get('name', 'Unknown Arena')
                 home_team = g.get('homeTeam', {}).get('name', 'Unknown Home')
-                visitor_team = g.get('visitorTeam', {}).get('name', 'Unknown Visitor')
+                # FIX: Spordle API uses 'awayTeam', not 'visitorTeam'
+                visitor_team = g.get('awayTeam', {}).get('name', 'Unknown Visitor')
                 
                 # Resolve Team IDs (Get or Create)
                 # Use global fuzzy update
                 hid = get_or_create_team(cursor, home_team)
                 vid = get_or_create_team(cursor, visitor_team)
                 
-                cursor.execute("SELECT final_score_home FROM DimGame WHERE game_id=?", (game_id,))
+                cursor.execute("SELECT final_score_home, home_team_id, visitor_team_id FROM DimGame WHERE game_id=?", (game_id,))
                 row = cursor.fetchone()
                 
                 # Only insert if NOT exists. 
@@ -677,7 +678,18 @@ def main():
                 if not row:
                     should_update = True # Insert new
                 else:
-                    if row[0] == 0: should_update = True # Update existing scheduled
+                    if row[0] == 0: 
+                        should_update = True # Update existing scheduled
+                        
+                        # SAFETY CHECK: If existing DB entry has valid teams (not Unknown/Generic), 
+                        # and new JSON has "Unknown", DO NOT OVERWRITE properly identified teams.
+                        # This protects manual fixes or correctly parsed PDFs from being broken by bad JSON.
+                        # ID 2 is "Unknown Visitor", we assume ID > 2 is valid for now.
+                        existing_hid, existing_vid = row[1], row[2]
+                        if existing_hid > 2 and "Unknown" in home_team:
+                            hid = existing_hid
+                        if existing_vid > 2 and "Unknown" in visitor_team:
+                            vid = existing_vid
                 
                 if should_update:
                     try:
