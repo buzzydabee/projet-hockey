@@ -46,6 +46,10 @@ def load_data():
         JOIN DimTeam t2 ON g.visitor_team_id = t2.team_id
     ''', conn)
     
+    # Ensure column exists (backward compatibility)
+    if 'is_roster_incomplete' not in games.columns:
+        games['is_roster_incomplete'] = 0
+    
     # Goals
     goals = pd.read_sql_query('''
         SELECT g.game_id, g.team_id, g.period, g.time, t.team_name, p.player_name, p.jersey_number, g.player_jersey, g.assist1_jersey, g.assist2_jersey
@@ -1480,6 +1484,19 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
         games_filtered.loc[mask_scheduled, 'final_score_home'] = ''
         games_filtered.loc[mask_scheduled, 'final_score_visitor'] = ''
 
+        # Feature: Alignment Status
+        def alignment_status(val):
+            if val == 1: return "⚠️ Provisoire"
+            return "✅ Final"
+        
+        # Handle NaN safely
+        games_filtered['is_roster_incomplete'] = games_filtered['is_roster_incomplete'].fillna(0).astype(int)
+        games_filtered['Alignement'] = games_filtered['is_roster_incomplete'].apply(alignment_status)
+        # If scheduled (future), maybe "Alignement" is not relevant yet? 
+        # User asked for "Indicateur... pour les matchs pour lesquels l'alignement final n'a pas été sélectionné".
+        # Which is exactly what we captured from PDF.
+
+
         # Prepare Dates map
         game_dates = games[['game_id', 'date_dt']]
         
@@ -1520,7 +1537,9 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             st.subheader("Journal de Match")
             # Show relevant columns
             # Reordered: Home, Score Home, Score Visitor, Visitor
-            log_cols = ['date_dt', 'home', 'final_score_home', 'final_score_visitor', 'visitor', 'arena']
+            # Show relevant columns
+            # Reordered: Date, Alignement, Arena, Home, Scores, Visitor
+            log_cols = ['date_dt', 'Alignement', 'home', 'final_score_home', 'final_score_visitor', 'visitor', 'arena']
             st.dataframe(
                 games_filtered[log_cols].sort_values(by='date_dt', ascending=False), 
                 width="stretch",

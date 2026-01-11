@@ -53,6 +53,7 @@ def create_schema(cursor):
             fair_play_visitor INTEGER,
             is_overtime BOOLEAN,
             is_shootout BOOLEAN,
+            is_roster_incomplete INTEGER DEFAULT 0,
             FOREIGN KEY(home_team_id) REFERENCES DimTeam(team_id),
             FOREIGN KEY(visitor_team_id) REFERENCES DimTeam(team_id)
         )
@@ -382,6 +383,15 @@ def main():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     create_schema(cursor)
+
+    # --- MIGRATION: Ensure is_roster_incomplete exists ---
+    try:
+        cursor.execute("SELECT is_roster_incomplete FROM DimGame LIMIT 1")
+    except sqlite3.OperationalError:
+        print("Migrating DB: Adding is_roster_incomplete column...")
+        cursor.execute("ALTER TABLE DimGame ADD COLUMN is_roster_incomplete INTEGER DEFAULT 0")
+        conn.commit()
+    # -----------------------------------------------------
     
     skipped_count = 0
     total_files = len(TARGET_FILES)
@@ -505,8 +515,16 @@ def main():
             game_date = french_to_iso(game_date_str)
             arena = fields.get('locationName', {}).get('/V')
             
-            team_loc_name = str(fields.get('TeamNameLoc', {}).get('/V')).replace('**', '').strip()
-            team_vis_name = str(fields.get('TeamNameVis', {}).get('/V')).replace('**', '').strip()
+            raw_team_loc = str(fields.get('TeamNameLoc', {}).get('/V'))
+            raw_team_vis = str(fields.get('TeamNameVis', {}).get('/V'))
+            
+            # Check for Asterisks (Incomplete Roster)
+            is_incomplete = 0
+            if '**' in raw_team_loc or '**' in raw_team_vis:
+                is_incomplete = 1
+            
+            team_loc_name = raw_team_loc.replace('**', '').strip()
+            team_vis_name = raw_team_vis.replace('**', '').strip()
             
             score_loc = int(fields.get('scoreLoc', {}).get('/V', 0) or 0)
             score_vis = int(fields.get('scoreVis', {}).get('/V', 0) or 0)
@@ -581,11 +599,11 @@ def main():
             cursor.execute('''
                 INSERT INTO DimGame (game_id, date, arena, home_team_id, visitor_team_id, final_score_home, final_score_visitor,
                                      shots_for_home, shots_for_visitor, pp_goals_home, pp_attempts_home, pp_goals_visitor, pp_attempts_visitor,
-                                     fair_play_home, fair_play_visitor, is_overtime, is_shootout)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                     fair_play_home, fair_play_visitor, is_overtime, is_shootout, is_roster_incomplete)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (game_id, game_date, arena, loc_id, vis_id, score_loc, score_vis, 
                   shots_home, shots_vis, pp_g_home, pp_att_home, pp_g_vis, pp_att_vis,
-                  fp_home, fp_vis, is_ot, is_so))
+                  fp_home, fp_vis, is_ot, is_so, is_incomplete))
             
             # Process Rosters
             process_roster(cursor, loc_id, "Loc", fields)
