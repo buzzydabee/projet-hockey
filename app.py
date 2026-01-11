@@ -1135,6 +1135,10 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                 "PTS",
                 format="%d"
             ),
+             "FJ": st.column_config.NumberColumn(
+                "FJ",
+                format="%d"
+            ),
             "%AN": st.column_config.NumberColumn(
                 "%AN",
                 format="%.1f%%"
