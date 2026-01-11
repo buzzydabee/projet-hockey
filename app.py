@@ -1130,34 +1130,46 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                 format="%.3f",
                 min_value=0,
                 max_value=max_pmj,
+                width="small"
             ),
              "PTS": st.column_config.NumberColumn(
                 "PTS",
-                format="%d"
+                format="%d",
+                width="small"
             ),
              "FJ": st.column_config.NumberColumn(
                 "FJ",
-                format="%d"
+                format="%d",
+                width="small"
             ),
             "%AN": st.column_config.NumberColumn(
                 "%AN",
-                format="%.1f%%"
+                format="%.1f%%",
+                width="small"
             ),
              "%AN (Rec)": st.column_config.NumberColumn(
                 "%AN (Rec)",
-                format="%.1f%%"
+                format="%.1f%%",
+                width="small"
             ),
             "%DN": st.column_config.NumberColumn(
                 "%DN",
-                format="%.1f%%"
+                format="%.1f%%",
+                width="small"
             ),
              "%DN (Rec)": st.column_config.NumberColumn(
                 "%DN (Rec)",
-                format="%.1f%%"
+                format="%.1f%%",
+                width="small"
             ),
 
             # Add formats for normalized cols (defaults to %.2f usually but let's be explicit if needed or rely on default)
-            **({c: st.column_config.NumberColumn(format="%.2f") for c in cols_to_show if '/MJ' in c} if normalize else {})
+            **({c: st.column_config.NumberColumn(format="%.2f", width="small") for c in cols_to_show if '/MJ' in c} if normalize else {}),
+            
+            # Catch-all for other numeric columns to be small
+            # Exclude already defined ones? column_config merges. 
+            # We can iterate over remaining numeric cols
+            **{c: st.column_config.NumberColumn(width="small") for c in cols_to_show if c not in ['Équipe', 'PTS/MJ', 'PTS', 'FJ', '%AN', '%AN (Rec)', '%DN', '%DN (Rec)'] and get_column_type(c) in ['pos', 'neg', 'neu']}
         }
     )
     
@@ -1287,13 +1299,16 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                 column_config={
                      "%Arr": st.column_config.NumberColumn(
                         "%Arr",
-                        format="%.3f"
+                        format="%.3f",
+                        width="small"
                     ),
                     "Moy": st.column_config.NumberColumn(
                         "Moy",
-                        format="%.2f"
+                        format="%.2f",
+                        width="small"
                     ),
-                    **({c: st.column_config.NumberColumn(format="%.2f") for c in cols if '/MJ' in c} if normalize else {})
+                    **({c: st.column_config.NumberColumn(format="%.2f", width="small") for c in cols if '/MJ' in c} if normalize else {}),
+                    **{c: st.column_config.NumberColumn(width="small") for c in cols if c not in ['Nom', 'Équipe', '%Arr', 'Moy'] and isinstance(c, str)}
                 }
             )
     
@@ -1440,21 +1455,26 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                         format="%d",
                         min_value=0,
                         max_value=int(max(p_df['PTS'].max(), 1)),
+                        width="small"
                     ),
                     "PTS/MJ": st.column_config.NumberColumn(
                         "PTS/MJ",
-                        format="%.2f"
+                        format="%.2f",
+                        width="small"
                     ),
                     "PEM/MJ": st.column_config.NumberColumn(
                         "PEM/MJ",
-                        format="%.2f"
+                        format="%.2f",
+                        width="small"
                     ),
-                    "FJ": st.column_config.NumberColumn(format="%d"),
+                    "FJ": st.column_config.NumberColumn(format="%d", width="small"),
                      "Équipe": st.column_config.TextColumn(
                         "Équipe",
                         width="medium"
                     ),
-                    **({c: st.column_config.NumberColumn(format="%.2f") for c in cols if '/MJ' in c} if normalize else {})
+                    **({c: st.column_config.NumberColumn(format="%.2f", width="small") for c in cols if '/MJ' in c} if normalize else {}),
+                     # Catch-All for other stats (B, A, PEM, etc) -> Small
+                    **{c: st.column_config.NumberColumn(width="small") for c in cols if c not in ['Nom', 'Équipe', 'PTS', 'PTS/MJ', 'PEM/MJ', 'FJ']}
                 }
             )
 
