@@ -709,9 +709,12 @@ def main():
                 # Only write "Actionable" info to the history (Downloads, Finds)
                 # We do NOT write "Processing Team" to history to avoid a long list of 20 teams.
                 if "Downloaded" in text or "Téléchargement terminé" in text: return True
-                if "Found" in text and "unique games" in text:
+                if "Founded" in text and "unique games" in text:
                     if " 0 unique games" in text: return False
                     return True
+                # SHOW DATE RANGE
+                if "PLAGE DE RECHERCHE" in text: return True
+                
                 # CRITICAL: Allow Errors to be seen!
                 if any(x in text for x in ["Error", "Exception", "Traceback", "Fail", "CRITICAL"]): return True
                 return False

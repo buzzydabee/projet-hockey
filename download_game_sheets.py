@@ -98,10 +98,15 @@ def process_global_schedule(page, date_from):
     # --- FILTER ATTEMPT ---
     try:
         # Dates
+        # Dates
         start_date = datetime.strptime(date_from, "%Y-%m-%d")
-        end_date = datetime(2026, 4, 30)
+        # FIX: End Date = Today + 7 days (Rolling window instead of fixed season end)
+        end_date = datetime.now() + timedelta(days=7)
+        
         start_str = start_date.strftime("%Y-%m-%d")
         end_str = end_date.strftime("%Y-%m-%d")
+        
+        print(f"PLAGE DE RECHERCHE: {start_str} à {end_str}")
         # Open Date Range Menu
         # Screenshot 1: The user highlights the bar showing "30 prochains jours" or "Saison ...".
         # It's usually a button or div with a calendar icon.
