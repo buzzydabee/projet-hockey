@@ -1226,20 +1226,16 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             # Center stats columns (Skip Nom, Team)
             stats_cols_g = cols[2:] 
             
-            # Pin Nom
+            # Pin Nom: Keep it as a column instead of Index to ensure white color
+            # gdf.set_index("Nom", append=True, inplace=True) # REMOVED to fix color
             gdf.index.name = "Rang"
-            gdf.set_index("Nom", append=True, inplace=True)
             
-            # Cols to display (excluding Nom which is in index)
-            # We perform style on the remaining columns
-            cols_display = [c for c in cols if c != 'Nom']
+            # Cols to display (Nom is now included in columns)
+            cols_display = cols 
             
             styler_gdf = gdf[cols_display].style.set_properties(
-                subset=list(set(cols_display) & set(stats_cols_g)), # Ensure intersection
+                subset=list(set(cols_display) & set(stats_cols_g)), # Center numbers only
                 **{'text-align': 'center'}
-            ).set_properties(
-                subset=['Équipe'],
-                **{'color': '#a0a0a0'}
             ).set_table_styles([
                 {'selector': 'th', 'props': [('text-align', 'center !important')]},
                 {'selector': 'td', 'props': [('text-align', 'center !important')]}
@@ -1410,18 +1406,15 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             # STYLING
             stats_cols_p = cols[2:] # Skip Nom, Equipe
             
-            # Pin Nom
+            # Pin Nom: Keep as column
+            # p_df.set_index("Nom", append=True, inplace=True) # REMOVED
             p_df.index.name = "Rang"
-            p_df.set_index("Nom", append=True, inplace=True)
             
-            cols_display_p = [c for c in cols if c != 'Nom']
+            cols_display_p = cols
             
             styler_pdf = p_df[cols_display_p].style.set_properties(
                 subset=list(set(cols_display_p) & set(stats_cols_p)),
                 **{'text-align': 'center'}
-            ).set_properties(
-                subset=['Équipe'],
-                **{'color': '#a0a0a0'}
             ).set_table_styles([
                 {'selector': 'th', 'props': [('text-align', 'center !important')]},
                 {'selector': 'td', 'props': [('text-align', 'center !important')]}
