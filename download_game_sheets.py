@@ -20,8 +20,9 @@ def get_optimal_start_date():
             return "2025-09-01"
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
-        # With ISO dates (YYYY-MM-DD), lexical sort IS chronological sort
-        cursor.execute("SELECT MAX(date) FROM DimGame")
+        # FIX: Ignore future "Scheduled" games (score=0) when calculating start date.
+        # Otherwise, if we have games until April, we'll never re-check last week's games.
+        cursor.execute("SELECT MAX(date) FROM DimGame WHERE (final_score_home > 0 OR final_score_visitor > 0)")
         row = cursor.fetchone()
         conn.close()
 
@@ -125,18 +126,15 @@ def process_global_schedule(page, date_from):
             page.mouse.click(960, 400) # Risky guess
             time.sleep(1)
 
-        # Select '7 prochains jours' as base
-        # User requested switch to future-facing default to ensure future games are captured.
-        print("Selecting '7 prochains jours'...")
+        # Select 'Personnalisé'
+        # We need full control to span Past (for missed games) AND Future (for schedule).
+        # Presets like '7 prochains' might block past dates.
+        print("Selecting 'Personnalisé'...")
         try:
-            # We look for the exact text.
-            page.locator("text=7 prochains jours").click()
+            page.locator("text=Personnalisé").click()
             time.sleep(1)
         except Exception as e:
-            print(f"Could not find '7 prochains jours': {e}")
-            print("Trying to force 'Personnalisé'...")
-            try: page.locator("text=Personnalisé").click()
-            except: pass
+            print(f"Could not find 'Personnalisé': {e}")
 
         # Override Dates
         # Now that inputs are active/initlized, we overwrite them.
