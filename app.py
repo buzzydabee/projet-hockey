@@ -1888,8 +1888,9 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                     stats[p]['GA_avg'] = ga / gp
                     
                     # PIM: Penalties by Team in Period P
-                    # Sum duration? Or count? Usually PIM (minutes)
-                    pim_mins = t_pens[(t_pens['team_name'] == team) & (t_pens['period'] == p)]['duration'].sum()
+                    # Force numeric conversion for duration
+                    t_pens_p = t_pens[(t_pens['team_name'] == team) & (t_pens['period'] == p)]
+                    pim_mins = pd.to_numeric(t_pens_p['duration'], errors='coerce').fillna(0).sum()
                     stats[p]['PIM_avg'] = pim_mins / gp
                     
                     # PP%: Goals PP / Opps PP in Period P
