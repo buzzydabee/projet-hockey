@@ -632,12 +632,22 @@ def main():
 
     # --- ACTION HANDLER (Deep Linking) ---
     # Handle "Face to Face" requests from Journal
+    # New Standard: ?selected_teams_custom=TeamA&selected_teams_custom=TeamB
     try:
-        if "action" in st.query_params and st.query_params["action"] == "face_to_face":
+        # Check for standard list param (Streamlit returns list or string)
+        qt = st.query_params.get_all("selected_teams_custom") # Returns list
+        if qt and len(qt) >= 2:
+             st.session_state["filter_mode_idx"] = 2 # Index for "Sélection Personnalisée"
+             st.session_state["selected_teams_custom"] = qt # Set widget state directly
+             # Clear params to avoid sticky URL state? Optional.
+        
+        # Legacy Support (if any)
+        elif "action" in st.query_params and st.query_params["action"] == "face_to_face":
             t1 = st.query_params.get("t1")
             t2 = st.query_params.get("t2")
             if t1 and t2:
-                 st.session_state.filter_mode = "Sélection Personnalisée"
+                 st.session_state["filter_mode_idx"] = 2
+                 st.session_state["selected_teams_custom"] = [t1, t2]
                  # Multiselect needs list
                  st.session_state.selected_teams_custom = [t1, t2]
                  st.session_state.filter_mode = "Sélection Personnalisée"
@@ -649,7 +659,12 @@ def main():
     except Exception as e:
         status_container.write(f"Erreur param: {e}")
     
-    filter_mode = st.sidebar.radio("Mode de Sélection", ["Toutes les équipes", "Par Division", "Sélection Personnalisée"], key="filter_mode")
+    filter_mode = st.sidebar.radio(
+        "Mode de Sélection", 
+        ["Toutes les équipes", "Par Division", "Sélection Personnalisée"], 
+        index=st.session_state.get("filter_mode_idx", 0),
+        key="filter_mode"
+    )
     
     selected_teams = []
     
