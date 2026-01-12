@@ -1860,7 +1860,7 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                     if not row.empty: return row.iloc[0]
                 return None
             
-             s1 = get_team_stats_season(t1)
+            s1 = get_team_stats_season(t1)
             s2 = get_team_stats_season(t2)
             
             # Helper to get period breakdowns
