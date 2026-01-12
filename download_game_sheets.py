@@ -142,31 +142,51 @@ def process_global_schedule(page, date_from):
             print(f"Could not find 'Personnalisé': {e}")
 
         # Override Dates
-        # Now that inputs are active/initlized, we overwrite them.
-        print(f"Overriding dates: {start_str} to {end_str}")
+        start_str = start_date.strftime("%Y-%m-%d")
+        end_str = end_date.strftime("%Y-%m-%d")
+        print(f"Applying Filters: {start_str} to {end_str}")
+
+        def robust_fill(selector, value):
+             for i in range(3):
+                 try:
+                     # Focus and Clear manually
+                     page.click(selector)
+                     page.keyboard.press("Control+A")
+                     page.keyboard.press("Backspace")
+                     time.sleep(0.1)
+                     
+                     # Type character by character (most robust)
+                     page.type(selector, value, delay=50) # 50ms delay implies typing
+                     
+                     # Force Blur / Change
+                     page.evaluate(f"document.querySelector('{selector}').dispatchEvent(new Event('change', {{bubbles: true}}))")
+                     page.evaluate(f"document.querySelector('{selector}').dispatchEvent(new Event('blur', {{bubbles: true}}))")
+                     time.sleep(0.5)
+                     
+                     current_val = page.input_value(selector)
+                     if current_val == value:
+                         return True
+                     print(f"Retry {i+1} for {selector}: Got '{current_val}', wanted '{value}'")
+                 except Exception as e:
+                     print(f"Error filling {selector}: {e}")
+             return False
+
+        if robust_fill("#date-picker-start", start_str):
+             print(f"Start Date set to: {start_str}")
+        else:
+             print("WARNING: Failed to set Start Date.")
+
+        if robust_fill("#date-picker-end", end_str):
+             print(f"End Date set to: {end_str}")
+        else:
+             print(f"WARNING: Failed to set End Date. It remains: {page.input_value('#date-picker-end')}")
+
+        # CAPTURE SCREENSHOT AS REQUESTED
         try:
-             # START DATE
-             page.fill("#date-picker-start", start_str)
-             # Force events to ensure React/Angular app picks it up
-             page.evaluate("document.getElementById('date-picker-start').dispatchEvent(new Event('input', {bubbles: true}))")
-             page.evaluate("document.getElementById('date-picker-start').dispatchEvent(new Event('change', {bubbles: true}))")
-             page.evaluate("document.getElementById('date-picker-start').dispatchEvent(new Event('blur', {bubbles: true}))")
-             
-             # END DATE
-             # User said end date is auto-set by '7 days', but we want to ensure we catch TODAY.
-             # If '7 days' excludes today, we might miss it.
-             # Safest is to overwrite it only if needed, OR just overwrite it always to be sure.
-             page.fill("#date-picker-end", end_str)
-             page.evaluate("document.getElementById('date-picker-end').dispatchEvent(new Event('input', {bubbles: true}))")
-             page.evaluate("document.getElementById('date-picker-end').dispatchEvent(new Event('change', {bubbles: true}))")
-             page.evaluate("document.getElementById('date-picker-end').dispatchEvent(new Event('blur', {bubbles: true}))")
-             
-             # Retrieve values to verify
-             actual_start = page.input_value("#date-picker-start")
-             print(f"DEBUG: Input Start Date is now: {actual_start}")
-             
-        except Exception as e:
-             print(f"Error filling inputs: {e}")
+            debug_shot = "debug_dates_submitted.png"
+            page.screenshot(path=debug_shot)
+            print(f"Screenshot saved for verification: {debug_shot}")
+        except: pass
 
         time.sleep(1)
 
@@ -230,6 +250,43 @@ def process_global_schedule(page, date_from):
     
     if len(unique_ids) == 0:
         print("WARNING: No games found to download. Check filters on screen?")
+    else:
+        # --- AGGRESSIVE UPDATE LOGIC ---
+        # User Request: "For the selected period, all games must be deleted from DB and PDF deleted."
+        # This ensures we re-download everything to catch stat updates.
+        print(f"Purging {len(unique_ids)} games from DB and Disk to force fresh update...")
+        try:
+            conn = sqlite3.connect(DB_NAME)
+            cursor = conn.cursor()
+            
+            ids_list = list(unique_ids)
+            # SQLite limit is usually 999 vars. Chunk it just in case.
+            chunk_size = 500
+            for i in range(0, len(ids_list), chunk_size):
+                chunk = ids_list[i:i+chunk_size]
+                placeholders = ','.join('?' * len(chunk))
+                
+                cursor.execute(f"DELETE FROM FactGoalieStats WHERE game_id IN ({placeholders})", chunk)
+                cursor.execute(f"DELETE FROM FactPenalties WHERE game_id IN ({placeholders})", chunk)
+                cursor.execute(f"DELETE FROM FactGoals WHERE game_id IN ({placeholders})", chunk)
+                cursor.execute(f"DELETE FROM DimGame WHERE game_id IN ({placeholders})", chunk)
+            
+            conn.commit()
+            conn.close()
+            print("DB entries deleted.")
+        except Exception as e:
+            print(f"Error purging DB: {e}")
+
+        # Delete Files
+        for gid in unique_ids:
+            p = os.path.join(DOWNLOAD_DIR, f"game_{gid}.pdf")
+            if os.path.exists(p):
+                try:
+                    os.remove(p)
+                    # print(f"Deleted cache: {p}")
+                except: pass
+        print("Local PDF cache cleared for these games.")
+
     
     for gid in unique_ids:
         download_pdf(gid)

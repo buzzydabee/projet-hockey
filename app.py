@@ -1330,7 +1330,7 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
         Uses streamlit.components.v1 to inject JS/CSS properly.
         """
         # Convert Styler to HTML
-        html_table = styler.to_html()
+        html_table = styler.to_html(escape=False)
         
         # Define CSS (Dark Mode + Sticky Header + Centered)
         css = """
@@ -1823,6 +1823,174 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
     # 2. METRICS (Single Team Only)
     # 2. METRICS (All Selected Teams) - ONLY IF CUSTOM SELECTION
     if filter_mode == "Sélection Personnalisée":
+        
+        # --- COMPARATIVE ANALYSIS (2 TEAMS ONLY) ---
+        if len(selected_teams) == 2:
+            st.header("⚔️ Analyse Face-à-Face (Comparatif)")
+            t1, t2 = selected_teams[0], selected_teams[1]
+            
+            # Helper to get team season stats
+            def get_team_stats_season(team):
+                # Filter ALL season games for this team
+                t_games = games[(games['home'] == team) | (games['visitor'] == team)]
+                if t_games.empty: return None
+                
+                # We need global stats
+                g_ids = t_games['game_id'].unique()
+                t_goals = goals[goals['game_id'].isin(g_ids)]
+                t_pens = penalties[penalties['game_id'].isin(g_ids)]
+                
+                df_stats = calculate_standings(t_games, t_pens, t_goals)
+                if not df_stats.empty:
+                    row = df_stats[df_stats['Team'] == team]
+                    if not row.empty: return row.iloc[0]
+                return None
+            
+            s1 = get_team_stats_season(t1)
+            s2 = get_team_stats_season(t2)
+            
+            if s1 is not None and s2 is not None:
+                 # 1. TALE OF THE TAPE (Choc des Forces)
+                 st.subheader("🥊 Choc des Forces")
+                 c1, c2, c3, c4 = st.columns(4)
+                 
+                 # Offense
+                 with c1:
+                     st.caption("Attaque (BP/MJ)")
+                     v1 = round(s1['GF']/s1['GP'], 2) if s1['GP'] else 0
+                     v2 = round(s2['GF']/s2['GP'], 2) if s2['GP'] else 0
+                     delta = round(v1 - v2, 2)
+                     st.metric(t1, v1, delta)
+                     st.metric(t2, v2, -delta)
+                     
+                 # Defense
+                 with c2:
+                     st.caption("Défense (BC/MJ)")
+                     v1 = round(s1['GA']/s1['GP'], 2) if s1['GP'] else 0
+                     v2 = round(s2['GA']/s2['GP'], 2) if s2['GP'] else 0
+                     delta = round(v1 - v2, 2)
+                     st.metric(t1, v1, delta, delta_color="inverse")
+                     st.metric(t2, v2, -delta, delta_color="inverse")
+                 
+                 # Power Play
+                 with c3:
+                     st.caption("Avantage Num. (%AN)")
+                     v1 = s1['PP%']
+                     v2 = s2['PP%']
+                     delta = round(v1 - v2, 1)
+                     st.metric(t1, f"{v1}%", delta)
+                     st.metric(t2, f"{v2}%", -delta)
+                     
+                 # Discipline
+                 with c4:
+                     st.caption("Discipline (PUN/MJ)")
+                     p1 = round(s1['PIM']/s1['GP'], 1) if s1['GP'] else 0
+                     p2 = round(s2['PIM']/s2['GP'], 1) if s2['GP'] else 0
+                     delta = round(p1 - p2, 1)
+                     st.metric(t1, p1, delta, delta_color="inverse")
+                     st.metric(t2, p2, -delta, delta_color="inverse")
+            
+            st.divider()
+            
+            # 2. ZONE DE DANGER (Period Analysis)
+            # Calculate Goals per period for each team season-wide (For vs Against)
+            # We can use our SQL/Data or recalculate quick.
+            # Using 'goals' DF:
+            # T1 Goals
+            def get_period_diffs(team):
+                # Goals FOR
+                g_for = goals[goals['team_name'] == team]
+                gf_p = g_for.groupby('period').size() # 1, 2, 3...
+                
+                # Goals AGAINST (Games involved but team_name != team)
+                # Need games involved
+                g_team_games = games[(games['home'] == team) | (games['visitor'] == team)]['game_id']
+                g_against = goals[(goals['game_id'].isin(g_team_games)) & (goals['team_name'] != team)]
+                ga_p = g_against.groupby('period').size()
+                
+                diffs = {}
+                for p in [1, 2, 3]:
+                    f = gf_p.get(p, 0)
+                    a = ga_p.get(p, 0)
+                    diffs[p] = f - a
+                return diffs
+            
+            d1 = get_period_diffs(t1)
+            d2 = get_period_diffs(t2)
+            
+            c_zone, c_common = st.columns([0.4, 0.6])
+            
+            with c_zone:
+                st.subheader("⚠️ Zone de Danger")
+                st.caption("Différentiel de buts par période (Saison)")
+                
+                # Simple HTML Table
+                z_html = f"""
+                <table style="width:100%; text-align:center; border-collapse: collapse;">
+                    <tr style="border-bottom:1px solid #444; color:#888;"><th>Période</th><th>{t1}</th><th>{t2}</th></tr>
+                    <tr><td>1ère</td><td style="color:{'#4caf50' if d1[1]>0 else '#ff4b4b'}">{d1[1]:+d}</td><td style="color:{'#4caf50' if d2[1]>0 else '#ff4b4b'}">{d2[1]:+d}</td></tr>
+                    <tr><td>2e</td><td style="color:{'#4caf50' if d1[2]>0 else '#ff4b4b'}">{d1[2]:+d}</td><td style="color:{'#4caf50' if d2[2]>0 else '#ff4b4b'}">{d2[2]:+d}</td></tr>
+                    <tr><td>3e</td><td style="color:{'#4caf50' if d1[3]>0 else '#ff4b4b'}">{d1[3]:+d}</td><td style="color:{'#4caf50' if d2[3]>0 else '#ff4b4b'}">{d2[3]:+d}</td></tr>
+                </table>
+                """
+                st.markdown(z_html, unsafe_allow_html=True)
+                
+            # 3. COMMON OPPONENTS (Triangle)
+            with c_common:
+                st.subheader("🔺 Le Triangle (Adversaires Communs)")
+                # Find opponents t1 has played
+                g1 = games[(games['home'] == t1) | (games['visitor'] == t1)]
+                opp1 = set(g1['home']).union(set(g1['visitor'])) - {t1}
+                
+                g2 = games[(games['home'] == t2) | (games['visitor'] == t2)]
+                opp2 = set(g2['home']).union(set(g2['visitor'])) - {t2}
+                
+                common = list(opp1.intersection(opp2))
+                
+                if common:
+                    # Build table data
+                    rows = []
+                    for opp in common:
+                        # Res T1 vs Opp
+                        # Find game
+                        game_1 = g1[(g1['home'] == opp) | (g1['visitor'] == opp)].sort_values('date_dt').iloc[-1] # LATEST
+                        # Result T1
+                        s_t1_us = game_1['final_score_home'] if game_1['home'] == t1 else game_1['final_score_visitor']
+                        s_t1_them = game_1['final_score_visitor'] if game_1['home'] == t1 else game_1['final_score_home']
+                        res1 = f"G {s_t1_us}-{s_t1_them}" if s_t1_us > s_t1_them else (f"P {s_t1_us}-{s_t1_them}" if s_t1_us < s_t1_them else f"N {s_t1_us}-{s_t1_them}")
+                        color1 = "#4caf50" if s_t1_us > s_t1_them else ("#ff4b4b" if s_t1_us < s_t1_them else "#ffa726")
+                        
+                        # Res T2 vs Opp
+                        game_2 = g2[(g2['home'] == opp) | (g2['visitor'] == opp)].sort_values('date_dt').iloc[-1]
+                        s_t2_us = game_2['final_score_home'] if game_2['home'] == t2 else game_2['final_score_visitor']
+                        s_t2_them = game_2['final_score_visitor'] if game_2['home'] == t2 else game_2['final_score_home']
+                        res2 = f"G {s_t2_us}-{s_t2_them}" if s_t2_us > s_t2_them else (f"P {s_t2_us}-{s_t2_them}" if s_t2_us < s_t2_them else f"N {s_t2_us}-{s_t2_them}")
+                        color2 = "#4caf50" if s_t2_us > s_t2_them else ("#ff4b4b" if s_t2_us < s_t2_them else "#ffa726")
+                        
+                        rows.append(f"""
+                        <tr>
+                            <td style="text-align:left; padding-left:10px;">{opp}</td>
+                            <td style="color:{color1}; font-weight:bold;">{res1}</td>
+                            <td style="color:{color2}; font-weight:bold;">{res2}</td>
+                        </tr>
+                        """)
+                    
+                    tbl = f"""
+                    <table style="width:100%; text-align:center; border-collapse: collapse; font-size: 0.9rem;">
+                        <tr style="border-bottom:1px solid #444; color:#888;">
+                            <th style="text-align:left; padding-left:10px;">Adversaire</th>
+                            <th>Résultat {t1}</th>
+                            <th>Résultat {t2}</th>
+                        </tr>
+                        {''.join(rows)}
+                    </table>
+                    """
+                    st.markdown(tbl, unsafe_allow_html=True)
+                else:
+                    st.info("Aucun adversaire commun trouvé pour l'instant.")
+            
+            st.divider()
+
         for selected_team in selected_teams:
             st.header(f"📊 Analyse d'Équipe : {selected_team}")
             
@@ -1976,20 +2144,22 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
         if len(selected_teams) > 1: st.subheader("Liste des Matchs")
         
         # Add Link
-        games_filtered['url'] = games_filtered['game_id'].apply(lambda x: f"https://pdf.play.spordle.com/game/{x}?locale=fr")
+        # Add Link (HTML)
+        games_filtered['url'] = games_filtered['game_id'].apply(lambda x: f"<a href='https://pdf.play.spordle.com/game/{x}?locale=fr' target='_blank' style='text-decoration:none; color:#4da6ff;'>📄 PDF</a>")
         
-        # Add Face-to-Face Shortcut
+        # Add Face-to-Face Shortcut (HTML)
         # Only if game is not played (score is empty string)
         import urllib.parse
-        def make_f2f_link(row):
+        def make_f2f_link_html(row):
             if row['final_score_home'] == "": # Scheduled
                 base = f"/?action=face_to_face"
                 p1 = urllib.parse.quote(row['home'])
                 p2 = urllib.parse.quote(row['visitor'])
-                return f"{base}&t1={p1}&t2={p2}"
-            return None
+                url = f"{base}&t1={p1}&t2={p2}"
+                return f"<a href='{url}' target='_self' style='text-decoration:none; color:#ff4b4b; font-weight:bold;'>🆚 Face à Face</a>"
+            return ""
             
-        games_filtered['VS'] = games_filtered.apply(make_f2f_link, axis=1)
+        games_filtered['VS'] = games_filtered.apply(make_f2f_link_html, axis=1)
         
         # Format date
         games_filtered['Date'] = games_filtered['date_dt'].apply(format_date_fr)
@@ -1998,6 +2168,9 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
         log_cols = ['VS', 'Date', 'home', 'final_score_home', 'final_score_visitor', 'visitor', 'arena', 'url', 'Alignement']
         
         log_display = games_filtered.sort_values(by='date_dt', ascending=False)[log_cols]
+        
+        # Rename for cleaner display
+        log_display = log_display.rename(columns={'url': 'Feuille', 'VS': 'Action'})
 
         styler_log = log_display.style.set_properties(
             **{'text-align': 'center'}
@@ -2006,30 +2179,26 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             {'selector': 'td', 'props': [('text-align', 'center !important')]}
         ]).hide(axis='index')
         
-        st.dataframe(
-            styler_log, 
-            use_container_width=True,
-            column_config={
-                "url": st.column_config.LinkColumn("Feuille", display_text="📄 PDF"),
-                "VS": st.column_config.LinkColumn("Action", display_text="🆚 Face à Face")
-            },
-            hide_index=True
-        )
+        # Render using Helper
+        render_scrollable_table(styler_log, height=500)
 
     # Details (Single Team Only)
     if len(selected_teams) == 1 and tab2 and tab3:
         with tab2:
             st.subheader("Punitions")
-            cols_p = ['date_dt'] + [c for c in penalties_filtered.columns if c not in ['date_dt', 'game_id', 'team_id']]
-            st.dataframe(
-                penalties_filtered[cols_p].sort_values(by='date_dt', ascending=False), 
-                use_container_width=True,
-                height=500,
-                column_config={
-                    "date_dt": st.column_config.DateColumn("Date", format="DD MMMM YYYY")
-                },
-                hide_index=True
-            )
+            penalties_filtered['Date'] = penalties_filtered['date_dt'].apply(format_date_fr)
+            cols_p = ['Date'] + [c for c in penalties_filtered.columns if c not in ['date_dt', 'game_id', 'team_id', 'Date']]
+            
+            p_display = penalties_filtered[cols_p].sort_values(by='date_dt', ascending=False)
+            
+            styler_p = p_display.style.set_properties(
+                **{'text-align': 'center'}
+            ).set_table_styles([
+                {'selector': 'th', 'props': [('text-align', 'center !important')]},
+                {'selector': 'td', 'props': [('text-align', 'center !important')]}
+            ]).hide(axis='index')
+            
+            render_scrollable_table(styler_p, height=500)
             
         with tab3:
              # Resolve Player Names
@@ -2055,15 +2224,21 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                  cols_g_show = []
              
              if not goals_filtered.empty:
-                 st.dataframe(
-                    goals_filtered[cols_g_show].sort_values(by='date_dt', ascending=False),
-                    use_container_width=True,
-                    height=500,
-                    column_config={
-                        "date_dt": st.column_config.DateColumn("Date", format="DD MMMM YYYY")
-                    },
-                    hide_index=True
-                 )
+                 goals_filtered['Date'] = goals_filtered['date_dt'].apply(format_date_fr)
+                 cols_g_show = ['Date', 'Buteur', 'Passeur 1', 'Passeur 2', 'period', 'time']
+                 
+                 g_display = goals_filtered[cols_g_show].sort_values(by='Date', ascending=False) # Sort by string date? No, sort logic lost if we use Date str.
+                 # Better: sort by original date_dt then drop it
+                 g_display = goals_filtered.sort_values(by='date_dt', ascending=False)[cols_g_show]
+                 
+                 styler_g = g_display.style.set_properties(
+                    **{'text-align': 'center'}
+                 ).set_table_styles([
+                    {'selector': 'th', 'props': [('text-align', 'center !important')]},
+                    {'selector': 'td', 'props': [('text-align', 'center !important')]}
+                 ]).hide(axis='index')
+                 
+                 render_scrollable_table(styler_g, height=500)
              else:
                  st.info("Aucun but enregistré.")
 
