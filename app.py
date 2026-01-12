@@ -1335,40 +1335,48 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
         # Define CSS (Dark Mode + Sticky Header + Centered)
         css = """
         <style>
-            body { font-family: sans-serif; background-color: #0e1117; color: white; margin: 0; }
+            body { 
+                font-family: sans-serif; 
+                background-color: #0e1117; 
+                color: white; 
+                margin: 0; 
+                overflow: hidden; /* Disable body scroll, force internal div scroll */
+            }
             .table-container { 
-                height: 100vh; 
-                overflow-y: auto; 
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                overflow: auto; /* Scroll bar belongs here */
                 border: 1px solid #333;
-                border-radius: 4px;
             }
             table { width: 100%; border-collapse: collapse; }
             th, td { 
                 padding: 8px 12px; 
                 text-align: center !important; 
                 border-bottom: 1px solid #333;
-                white-space: nowrap; /* Prevent wrapping */
+                white-space: nowrap; 
             }
             th {
-                position: -webkit-sticky; /* Safari/Webkit */
+                position: -webkit-sticky; 
                 position: sticky;
                 top: 0;
-                background-color: #1f2329; /* Slightly lighter header */
-                box-shadow: 0 1px 0 #444; /* Force border rendering on sticky */
-                background-color: #1f2329; /* Slightly lighter header */
+                background-color: #1f2329; 
+                box-shadow: 0 1px 0 #444; 
                 color: #ffffff;
                 cursor: pointer;
                 user-select: none;
-                z-index: 10;
+                z-index: 1000; /* High z-index */
                 border-bottom: 2px solid #444;
             }
             th:hover { background-color: #2d333b; }
             tr:hover { background-color: #1c2026; }
             
-            /* Custom Scrollbar for Webkit */
-            ::-webkit-scrollbar { width: 8px; height: 8px; }
+            /* Custom Scrollbar */
+            ::-webkit-scrollbar { width: 10px; height: 10px; }
             ::-webkit-scrollbar-track { background: #0e1117; }
-            ::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+            ::-webkit-scrollbar-thumb { background: #444; border-radius: 5px; }
             ::-webkit-scrollbar-thumb:hover { background: #666; }
         </style>
         """
@@ -1465,11 +1473,14 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
         # Actually, components.html controls the iframe size. 
         # Inside, we want the table to take up available space.
         # So .table-container { height: 100%; ... } is better than 100vh.
-        full_html = full_html.replace("height: 100vh;", "height: 100%;")
-
-        # Use components to render in iframe (isolates CSS/JS)
-        # Fix height to slightly more than passed to accommodate scrollbar usually
-        components.html(full_html, height=final_height + 10, scrolling=True)
+        # Inject HTML with explicit non-scrolling iframe to force internal div logic
+        components.html(f"""
+        {css}
+        <div class="table-container">
+            {html_table}
+        </div>
+        {js}
+        """, height=final_height, scrolling=False)
 
     # --- FORMATTING (for HTML) ---
     # Apply precise formatting
