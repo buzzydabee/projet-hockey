@@ -2189,7 +2189,8 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             penalties_filtered['Date'] = penalties_filtered['date_dt'].apply(format_date_fr)
             cols_p = ['Date'] + [c for c in penalties_filtered.columns if c not in ['date_dt', 'game_id', 'team_id', 'Date']]
             
-            p_display = penalties_filtered[cols_p].sort_values(by='date_dt', ascending=False)
+            # Fix: Sort by date_dt BEFORE filtering columns
+            p_display = penalties_filtered.sort_values(by='date_dt', ascending=False)[cols_p]
             
             styler_p = p_display.style.set_properties(
                 **{'text-align': 'center'}
@@ -2227,8 +2228,7 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                  goals_filtered['Date'] = goals_filtered['date_dt'].apply(format_date_fr)
                  cols_g_show = ['Date', 'Buteur', 'Passeur 1', 'Passeur 2', 'period', 'time']
                  
-                 g_display = goals_filtered[cols_g_show].sort_values(by='Date', ascending=False) # Sort by string date? No, sort logic lost if we use Date str.
-                 # Better: sort by original date_dt then drop it
+                 # Fix: Sort by original date_dt then drop it / select cols
                  g_display = goals_filtered.sort_values(by='date_dt', ascending=False)[cols_g_show]
                  
                  styler_g = g_display.style.set_properties(
