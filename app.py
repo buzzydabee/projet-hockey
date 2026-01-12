@@ -1945,30 +1945,30 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                          v_p3 = fmt_mini(p_data[3][key_suffix])
                          
                          table_html = f"""
-                            <div style="margin-left: 10px;">
-                                <table style="font-size: 0.75rem; text-align: center; border-collapse: collapse;">
-                                    <tr style="color: #666; border-bottom: 1px solid #444;"><td>P1</td><td>P2</td><td>P3</td></tr>
-                                    <tr style="color: #ccc;">
-                                        <td style="padding: 2px 4px;">{v_p1}</td>
-                                        <td style="padding: 2px 4px;">{v_p2}</td>
-                                        <td style="padding: 2px 4px;">{v_p3}</td>
-                                    </tr>
-                                </table>
-                            </div>
-                         """
+<div style="margin-left: 10px;">
+    <table style="font-size: 0.75rem; text-align: center; border-collapse: collapse;">
+        <tr style="color: #666; border-bottom: 1px solid #444;"><td>P1</td><td>P2</td><td>P3</td></tr>
+        <tr style="color: #ccc;">
+            <td style="padding: 2px 4px;">{v_p1}</td>
+            <td style="padding: 2px 4px;">{v_p2}</td>
+            <td style="padding: 2px 4px;">{v_p3}</td>
+        </tr>
+    </table>
+</div>
+"""
                      
                      html = f"""
-                     <div style="background-color: #1a1e24; border-radius: 8px; padding: 10px; margin-bottom: 10px; border: 1px solid #333;">
-                        <div style="font-size: 0.8rem; color: #888; margin-bottom: 4px;">{label}</div>
-                        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-                            <div>
-                                <div style="font-size: 1.8rem; font-weight: bold; color: white;">{val_main}</div>
-                                <div style="font-size: 0.9rem; color: {color}; font-weight: bold;">{arrow} {abs(delta):.2f}</div>
-                            </div>
-                            {table_html}
-                        </div>
-                     </div>
-                     """
+<div style="background-color: #1a1e24; border-radius: 8px; padding: 10px; margin-bottom: 10px; border: 1px solid #333;">
+    <div style="font-size: 0.8rem; color: #888; margin-bottom: 4px;">{label}</div>
+    <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+        <div>
+            <div style="font-size: 1.8rem; font-weight: bold; color: white;">{val_main}</div>
+            <div style="font-size: 0.9rem; color: {color}; font-weight: bold;">{arrow} {abs(delta):.2f}</div>
+        </div>
+        {table_html}
+    </div>
+</div>
+"""
                      return html
 
                  c1, c2, c3, c4 = st.columns(4)
