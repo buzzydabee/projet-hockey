@@ -54,7 +54,7 @@ def load_data():
     
     # Goals
     goals = pd.read_sql_query('''
-        SELECT g.game_id, g.team_id, g.period, g.time, t.team_name, p.player_name, p.jersey_number, g.player_jersey, g.assist1_jersey, g.assist2_jersey
+        SELECT g.game_id, g.team_id, g.period, g.time, g.strength, t.team_name, p.player_name, p.jersey_number, g.player_jersey, g.assist1_jersey, g.assist2_jersey
         FROM FactGoals g
         JOIN DimTeam t ON g.team_id = t.team_id
         LEFT JOIN DimPlayer p ON g.team_id = p.team_id AND g.player_jersey = p.jersey_number
@@ -2262,11 +2262,13 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
         import urllib.parse
         def make_f2f_link_html(row):
             if row['final_score_home'] == "": # Scheduled
-                base = f"/?action=face_to_face"
-                p1 = urllib.parse.quote(row['home'])
-                p2 = urllib.parse.quote(row['visitor'])
-                url = f"{base}&t1={p1}&t2={p2}"
-                return f"<a href='{url}' target='_self' style='text-decoration:none; color:#ff4b4b; font-weight:bold;'>🆚 Face à Face</a>"
+                # Create URL manually
+                params = {"selected_teams_custom": [row['home'], row['visitor']]}
+                # Encode properly
+                qs = urllib.parse.urlencode(params, doseq=True)
+                url = f"?{qs}"
+                
+                return f'<a href="{url}" target="_parent" style="text-decoration: none; color: #4dabf7; font-weight: bold;">⚔️ Face à Face</a>'
             return ""
             
         games_filtered['VS'] = games_filtered.apply(make_f2f_link_html, axis=1)
