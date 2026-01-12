@@ -1350,8 +1350,11 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                 white-space: nowrap; /* Prevent wrapping */
             }
             th {
+                position: -webkit-sticky; /* Safari/Webkit */
                 position: sticky;
                 top: 0;
+                background-color: #1f2329; /* Slightly lighter header */
+                box-shadow: 0 1px 0 #444; /* Force border rendering on sticky */
                 background-color: #1f2329; /* Slightly lighter header */
                 color: #ffffff;
                 cursor: pointer;
@@ -1967,14 +1970,10 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                         res2 = f"G {s_t2_us}-{s_t2_them}" if s_t2_us > s_t2_them else (f"P {s_t2_us}-{s_t2_them}" if s_t2_us < s_t2_them else f"N {s_t2_us}-{s_t2_them}")
                         color2 = "#4caf50" if s_t2_us > s_t2_them else ("#ff4b4b" if s_t2_us < s_t2_them else "#ffa726")
                         
-                        rows.append(f"""
-                        <tr>
-                            <td style="text-align:left; padding-left:10px;">{opp}</td>
-                            <td style="color:{color1}; font-weight:bold;">{res1}</td>
-                            <td style="color:{color2}; font-weight:bold;">{res2}</td>
-                        </tr>
-                        """)
+                        # Use clean string concatenation to avoid indentation issues in Markdown
+                        rows.append(f"<tr><td style='text-align:left; padding-left:10px;'>{opp}</td><td style='color:{color1}; font-weight:bold;'>{res1}</td><td style='color:{color2}; font-weight:bold;'>{res2}</td></tr>")
                     
+                    rows_html = "".join(rows)
                     tbl = f"""
                     <table style="width:100%; text-align:center; border-collapse: collapse; font-size: 0.9rem;">
                         <tr style="border-bottom:1px solid #444; color:#888;">
@@ -1982,7 +1981,7 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                             <th>Résultat {t1}</th>
                             <th>Résultat {t2}</th>
                         </tr>
-                        {''.join(rows)}
+                        {rows_html}
                     </table>
                     """
                     st.markdown(tbl, unsafe_allow_html=True)
