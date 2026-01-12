@@ -529,6 +529,11 @@ def main():
             score_loc = int(fields.get('scoreLoc', {}).get('/V', 0) or 0)
             score_vis = int(fields.get('scoreVis', {}).get('/V', 0) or 0)
             
+            if "654709" in filename:
+                 raw_v = fields.get('scoreVis', {}).get('/V')
+                 print(f"DEBUG {filename}: scoreVis RAW = {raw_v!r} (Inside Process)")
+                 print(f"DEBUG {filename}: score_vis parsed = {score_vis}")
+            
             # Advanced Stats
             # Shots: Home Shots = Sum of Visitor Goalie Shots
             shots_home = sum_shots(fields, "Vis")
@@ -556,36 +561,21 @@ def main():
             is_empty_stats = (shots_home == 0 and shots_vis == 0 and score_loc == 0 and score_vis == 0)
             
             if is_empty_stats:
-                if game_date == today_iso:
-                     # Keep it in DB (so we see it in Schedule if we had one), 
-                     # BUT delete the PDF so 'download_game_sheets.py' fetches the update tomorrow.
-                     print(f"Keeping TODAY's scheduled/empty game in DB: {filename}")
-                     try:
-                         # We must verify if 'reader' stream is closed? 
-                         # pypdf usually closes if we read it all, but let's be safe.
-                         # Only delete if we are NOT on Windows locking... 
-                         # Actually, process_gamesheets opens it. We need to be careful.
-                         # We can't delete it while it's open.
-                         # We'll add it to a list to delete AFTER the loop or explicitly close here?
-                         # The loop structure: 'with open(...) as f' isn't used?
-                         # Let's check how it opens.
-                         pass 
-                     except: pass
-                     
-                     # We will mark it for deletion?
-                     # Let's see the open code... line 348: reader = PdfReader(filepath)
-                     # pypdf PdfReader holds the file open? 
-                     # We might need to defer deletion.
-                     deferred_deletes.append(filepath)
+                # CRITICAL: If the game sheet is "Empty" (Scheduled/0-0), we MUST delete the PDF.
+                # Why? Because 'download_game_sheets.py' skips existing files. 
+                # If we keep this 0-0 PDF, we will never download the "Final" version when the game is played.
+                # We defer deletion to ensure file handles are closed.
+                deferred_deletes.append(filepath)
+
+                if game_date >= today_iso:
+                     # If Today or Future: Keep in DB so it shows in "Journal de Match" as Scheduled.
+                     print(f"Keeping Scheduled game in DB (will delete PDF for refresh): {filename}")
+                     # We proceed to Insert...
                 else:
-                    print(f"Skipping past incomplete game: {filename}")
-                    try:
-                        # Optional: Verify if we should delete the PDF too?
-                        # User said "removed from DB", implies PDF might stay or go.
-                        # Using 'continue' skips DB insertion.
-                        pass
-                    except: pass
-                    continue
+                     # If Past and still empty: It's a cancelled game, or we missed it. 
+                     # Skip DB insert to avoid cluttering stats with 0-0 games from the past.
+                     print(f"Skipping past incomplete/formatted game: {filename}")
+                     continue
             
             # If score not tied, but is_ot false? Regulation result.
             
@@ -693,23 +683,24 @@ def main():
                 hid = get_or_create_team(cursor, home_team)
                 vid = get_or_create_team(cursor, visitor_team)
                 
-                cursor.execute("SELECT final_score_home, home_team_id, visitor_team_id FROM DimGame WHERE game_id=?", (game_id,))
+                cursor.execute("SELECT final_score_home, final_score_visitor, home_team_id, visitor_team_id FROM DimGame WHERE game_id=?", (game_id,))
                 row = cursor.fetchone()
                 
                 # Only insert if NOT exists. 
-                # If exists, ONLY update if it was 'Scheduled' (Score=0). Do NOT overwrite Final games.
+                # If exists, ONLY update if it was 'Scheduled' (Score=0-0). Do NOT overwrite Final games (e.g. 0-4).
                 should_update = False
                 if not row:
                     should_update = True # Insert new
                 else:
-                    if row[0] == 0: 
+                    # Check if EXISTING database entry is "Empty" (0-0)
+                    if row[0] == 0 and row[1] == 0: 
                         should_update = True # Update existing scheduled
                         
                         # SAFETY CHECK: If existing DB entry has valid teams (not Unknown/Generic), 
                         # and new JSON has "Unknown", DO NOT OVERWRITE properly identified teams.
                         # This protects manual fixes or correctly parsed PDFs from being broken by bad JSON.
                         # ID 2 is "Unknown Visitor", we assume ID > 2 is valid for now.
-                        existing_hid, existing_vid = row[1], row[2]
+                        existing_hid, existing_vid = row[2], row[3]
                         if existing_hid > 2 and "Unknown" in home_team:
                             hid = existing_hid
                         if existing_vid > 2 and "Unknown" in visitor_team:
