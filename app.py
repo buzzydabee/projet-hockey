@@ -1860,49 +1860,148 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                     if not row.empty: return row.iloc[0]
                 return None
             
-            s1 = get_team_stats_season(t1)
+             s1 = get_team_stats_season(t1)
             s2 = get_team_stats_season(t2)
             
+            # Helper to get period breakdowns
+            def get_period_breakdown(team, games_pool):
+                # Filter for games involved
+                t_games = games_pool[(games_pool['home'] == team) | (games_pool['visitor'] == team)]
+                g_ids = t_games['game_id'].unique()
+                t_goals = goals[goals['game_id'].isin(g_ids)]
+                t_pens = penalties[penalties['game_id'].isin(g_ids)]
+                
+                # Stats per period
+                stats = {1: {}, 2: {}, 3: {}}
+                
+                # GP is constant for the team across periods (it's the game count)
+                gp = len(t_games)
+                if gp == 0: return stats
+                
+                for p in [1, 2, 3]:
+                    # GF: Goals by Team in Period P
+                    gf = len(t_goals[(t_goals['team_name'] == team) & (t_goals['period'] == p)])
+                    stats[p]['GF_avg'] = gf / gp
+                    
+                    # GA: Goals Against Team in Period P
+                    ga = len(t_goals[(t_goals['team_name'] != team) & (t_goals['period'] == p)])
+                    stats[p]['GA_avg'] = ga / gp
+                    
+                    # PIM: Penalties by Team in Period P
+                    # Sum duration? Or count? Usually PIM (minutes)
+                    pim_mins = t_pens[(t_pens['team_name'] == team) & (t_pens['period'] == p)]['duration'].sum()
+                    stats[p]['PIM_avg'] = pim_mins / gp
+                    
+                    # PP%: Goals PP / Opps PP in Period P
+                    # PP Goal: Goal by Team, strength='PP', period=P
+                    pp_goals = len(t_goals[(t_goals['team_name'] == team) & (t_goals['strength'] == 'PP') & (t_goals['period'] == p)])
+                    
+                    # PP Opps: Penalties by Opponent in Period P
+                    # Opponent penalties = Penalties where team_name != team
+                    # This is an approximation (offsets, majors etc), but consistent with rest of app
+                    pp_opps = len(t_pens[(t_pens['team_name'] != team) & (t_pens['period'] == p)])
+                    
+                    if pp_opps > 0:
+                        stats[p]['PP%'] = (pp_goals / pp_opps) * 100
+                    else:
+                        stats[p]['PP%'] = 0.0
+                
+                return stats
+
             if s1 is not None and s2 is not None:
                  # 1. TALE OF THE TAPE (Choc des Forces)
                  st.subheader("🥊 Choc des Forces")
+                 
+                 p_stats1 = get_period_breakdown(t1, games)
+                 p_stats2 = get_period_breakdown(t2, games)
+                 
+                 # HTML Component for Metric + MiniTable
+                 def render_stat_card(label, val_main, delta, p_data, key_suffix, is_inverse=False, is_perc=False, val_fmt="{:.2f}"):
+                     color = "#ffffff"
+                     if delta > 0: color = "#4caf50" if not is_inverse else "#ff4b4b"
+                     elif delta < 0: color = "#ff4b4b" if not is_inverse else "#4caf50"
+                     else: color = "#888"
+                     
+                     arrow = "↑" if delta > 0 else "↓"
+                     if delta == 0: arrow = "-"
+                     
+                     # Mini Table Rows
+                     # Header: P1 P2 P3
+                     # Data: v1 v2 v3
+                     
+                     def fmt_mini(val):
+                         if is_perc: return f"{val:.0f}%" # Compact %
+                         return f"{val:.1f}" # Compact float
+                     
+                     v_p1 = fmt_mini(p_data[1][key_suffix])
+                     v_p2 = fmt_mini(p_data[2][key_suffix])
+                     v_p3 = fmt_mini(p_data[3][key_suffix])
+                     
+                     html = f"""
+                     <div style="background-color: #1a1e24; border-radius: 8px; padding: 10px; margin-bottom: 10px; border: 1px solid #333;">
+                        <div style="font-size: 0.8rem; color: #888; margin-bottom: 4px;">{label}</div>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                            <div>
+                                <div style="font-size: 1.8rem; font-weight: bold; color: white;">{val_main}</div>
+                                <div style="font-size: 0.9rem; color: {color}; font-weight: bold;">{arrow} {abs(delta):.2f}</div>
+                            </div>
+                            <div style="margin-left: 10px;">
+                                <table style="font-size: 0.75rem; text-align: center; border-collapse: collapse;">
+                                    <tr style="color: #666; border-bottom: 1px solid #444;"><td>P1</td><td>P2</td><td>P3</td></tr>
+                                    <tr style="color: #ccc;">
+                                        <td style="padding: 2px 4px;">{v_p1}</td>
+                                        <td style="padding: 2px 4px;">{v_p2}</td>
+                                        <td style="padding: 2px 4px;">{v_p3}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                     </div>
+                     """
+                     return html
+
                  c1, c2, c3, c4 = st.columns(4)
                  
                  # Offense
                  with c1:
-                     st.caption("Attaque (BP/MJ)")
+                     # Team 1
                      v1 = round(s1['GF']/s1['GP'], 2) if s1['GP'] else 0
                      v2 = round(s2['GF']/s2['GP'], 2) if s2['GP'] else 0
-                     delta = round(v1 - v2, 2)
-                     st.metric(t1, v1, delta)
-                     st.metric(t2, v2, -delta)
+                     d1 = v1 - v2
+                     st.caption(f"Attaque: {t1}")
+                     st.markdown(render_stat_card("Buts Pour / Match", v1, d1, p_stats1, 'GF_avg'), unsafe_allow_html=True)
+                     st.caption(f"Attaque: {t2}")
+                     st.markdown(render_stat_card("Buts Pour / Match", v2, -d1, p_stats2, 'GF_avg'), unsafe_allow_html=True)
                      
                  # Defense
                  with c2:
-                     st.caption("Défense (BC/MJ)")
                      v1 = round(s1['GA']/s1['GP'], 2) if s1['GP'] else 0
                      v2 = round(s2['GA']/s2['GP'], 2) if s2['GP'] else 0
-                     delta = round(v1 - v2, 2)
-                     st.metric(t1, v1, delta, delta_color="inverse")
-                     st.metric(t2, v2, -delta, delta_color="inverse")
+                     d1 = v1 - v2
+                     st.caption(f"Défense: {t1}")
+                     st.markdown(render_stat_card("Buts Contre / Match", v1, d1, p_stats1, 'GA_avg', is_inverse=True), unsafe_allow_html=True)
+                     st.caption(f"Défense: {t2}")
+                     st.markdown(render_stat_card("Buts Contre / Match", v2, -d1, p_stats2, 'GA_avg', is_inverse=True), unsafe_allow_html=True)
                  
                  # Power Play
                  with c3:
-                     st.caption("Avantage Num. (%AN)")
                      v1 = s1['PP%']
                      v2 = s2['PP%']
-                     delta = round(v1 - v2, 1)
-                     st.metric(t1, f"{v1}%", delta)
-                     st.metric(t2, f"{v2}%", -delta)
+                     d1 = v1 - v2
+                     st.caption(f"Avantage Num: {t1}")
+                     st.markdown(render_stat_card("% Efficacité", f"{v1}%", d1, p_stats1, 'PP%', is_perc=True), unsafe_allow_html=True)
+                     st.caption(f"Avantage Num: {t2}")
+                     st.markdown(render_stat_card("% Efficacité", f"{v2}%", -d1, p_stats2, 'PP%', is_perc=True), unsafe_allow_html=True)
                      
                  # Discipline
                  with c4:
-                     st.caption("Discipline (PUN/MJ)")
                      p1 = round(s1['PIM']/s1['GP'], 1) if s1['GP'] else 0
                      p2 = round(s2['PIM']/s2['GP'], 1) if s2['GP'] else 0
-                     delta = round(p1 - p2, 1)
-                     st.metric(t1, p1, delta, delta_color="inverse")
-                     st.metric(t2, p2, -delta, delta_color="inverse")
+                     d1 = p1 - p2
+                     st.caption(f"Discipline: {t1}")
+                     st.markdown(render_stat_card("PUN / Match", p1, d1, p_stats1, 'PIM_avg', is_inverse=True), unsafe_allow_html=True)
+                     st.caption(f"Discipline: {t2}")
+                     st.markdown(render_stat_card("PUN / Match", p2, -d1, p_stats2, 'PIM_avg', is_inverse=True), unsafe_allow_html=True)
             
             st.divider()
             
