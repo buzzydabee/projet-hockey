@@ -54,7 +54,7 @@ def load_data():
     
     # Goals
     goals = pd.read_sql_query('''
-        SELECT g.game_id, g.team_id, g.period, g.time, g.strength, t.team_name, p.player_name, p.jersey_number, g.player_jersey, g.assist1_jersey, g.assist2_jersey
+        SELECT g.game_id, g.team_id, g.period, g.time, t.team_name, p.player_name, p.jersey_number, g.player_jersey, g.assist1_jersey, g.assist2_jersey
         FROM FactGoals g
         JOIN DimTeam t ON g.team_id = t.team_id
         LEFT JOIN DimPlayer p ON g.team_id = p.team_id AND g.player_jersey = p.jersey_number
@@ -1894,18 +1894,14 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                     stats[p]['PIM_avg'] = pim_mins / gp
                     
                     # PP%: Goals PP / Opps PP in Period P
-                    # PP Goal: Goal by Team, strength='PP', period=P
-                    pp_goals = len(t_goals[(t_goals['team_name'] == team) & (t_goals['strength'] == 'PP') & (t_goals['period'] == p)])
+                    # FIXME: Strength column not in DB. Need to use GameReconstructor or infer.
+                    # For now, disable per-period PP stats
+                    stats[p]['PP%'] = 0.0
                     
-                    # PP Opps: Penalties by Opponent in Period P
-                    # Opponent penalties = Penalties where team_name != team
-                    # This is an approximation (offsets, majors etc), but consistent with rest of app
-                    pp_opps = len(t_pens[(t_pens['team_name'] != team) & (t_pens['period'] == p)])
-                    
-                    if pp_opps > 0:
-                        stats[p]['PP%'] = (pp_goals / pp_opps) * 100
-                    else:
-                        stats[p]['PP%'] = 0.0
+                    # Placeholder logic to avoid crash
+                    # pp_goals = len(t_goals[(t_goals['team_name'] == team) & (t_goals['strength'] == 'PP') & (t_goals['period'] == p)])
+                    # pp_opps = len(t_pens[(t_pens['team_name'] != team) & (t_pens['period'] == p)])
+                    # if pp_opps > 0: stats[p]['PP%'] = (pp_goals / pp_opps) * 100
                 
                 return stats
 
