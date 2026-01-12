@@ -1878,6 +1878,10 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                 gp = len(t_games)
                 if gp == 0: return stats
                 
+                def parse_pim(d):
+                    try: return int(str(d).split(':')[0])
+                    except: return 0
+                
                 for p in [1, 2, 3]:
                     # GF: Goals by Team in Period P
                     gf = len(t_goals[(t_goals['team_name'] == team) & (t_goals['period'] == p)])
@@ -1888,20 +1892,13 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                     stats[p]['GA_avg'] = ga / gp
                     
                     # PIM: Penalties by Team in Period P
-                    # Force numeric conversion for duration
-                    t_pens_p = t_pens[(t_pens['team_name'] == team) & (t_pens['period'] == p)]
-                    pim_mins = pd.to_numeric(t_pens_p['duration'], errors='coerce').fillna(0).sum()
+                    # Parse "2:00" -> 2
+                    t_pens_p = t_pens[(t_pens['team_name'] == team) & (t_pens['period'] == p)].copy()
+                    pim_mins = t_pens_p['duration'].apply(parse_pim).sum()
                     stats[p]['PIM_avg'] = pim_mins / gp
                     
-                    # PP%: Goals PP / Opps PP in Period P
-                    # FIXME: Strength column not in DB. Need to use GameReconstructor or infer.
-                    # For now, disable per-period PP stats
+                    # PP%: Not available per period in DB
                     stats[p]['PP%'] = 0.0
-                    
-                    # Placeholder logic to avoid crash
-                    # pp_goals = len(t_goals[(t_goals['team_name'] == team) & (t_goals['strength'] == 'PP') & (t_goals['period'] == p)])
-                    # pp_opps = len(t_pens[(t_pens['team_name'] != team) & (t_pens['period'] == p)])
-                    # if pp_opps > 0: stats[p]['PP%'] = (pp_goals / pp_opps) * 100
                 
                 return stats
 
@@ -1913,7 +1910,7 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                  p_stats2 = get_period_breakdown(t2, games)
                  
                  # HTML Component for Metric + MiniTable
-                 def render_stat_card(label, val_main, delta, p_data, key_suffix, is_inverse=False, is_perc=False, val_fmt="{:.2f}"):
+                 def render_stat_card(label, val_main, delta, p_data, key_suffix, is_inverse=False, is_perc=False, val_fmt="{:.2f}", show_table=True):
                      color = "#ffffff"
                      if delta > 0: color = "#4caf50" if not is_inverse else "#ff4b4b"
                      elif delta < 0: color = "#ff4b4b" if not is_inverse else "#4caf50"
@@ -1922,26 +1919,17 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                      arrow = "↑" if delta > 0 else "↓"
                      if delta == 0: arrow = "-"
                      
-                     # Mini Table Rows
-                     # Header: P1 P2 P3
-                     # Data: v1 v2 v3
-                     
-                     def fmt_mini(val):
-                         if is_perc: return f"{val:.0f}%" # Compact %
-                         return f"{val:.1f}" # Compact float
-                     
-                     v_p1 = fmt_mini(p_data[1][key_suffix])
-                     v_p2 = fmt_mini(p_data[2][key_suffix])
-                     v_p3 = fmt_mini(p_data[3][key_suffix])
-                     
-                     html = f"""
-                     <div style="background-color: #1a1e24; border-radius: 8px; padding: 10px; margin-bottom: 10px; border: 1px solid #333;">
-                        <div style="font-size: 0.8rem; color: #888; margin-bottom: 4px;">{label}</div>
-                        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-                            <div>
-                                <div style="font-size: 1.8rem; font-weight: bold; color: white;">{val_main}</div>
-                                <div style="font-size: 0.9rem; color: {color}; font-weight: bold;">{arrow} {abs(delta):.2f}</div>
-                            </div>
+                     table_html = ""
+                     if show_table:
+                         def fmt_mini(val):
+                             if is_perc: return f"{val:.0f}%" # Compact %
+                             return f"{val:.1f}" # Compact float
+                         
+                         v_p1 = fmt_mini(p_data[1][key_suffix])
+                         v_p2 = fmt_mini(p_data[2][key_suffix])
+                         v_p3 = fmt_mini(p_data[3][key_suffix])
+                         
+                         table_html = f"""
                             <div style="margin-left: 10px;">
                                 <table style="font-size: 0.75rem; text-align: center; border-collapse: collapse;">
                                     <tr style="color: #666; border-bottom: 1px solid #444;"><td>P1</td><td>P2</td><td>P3</td></tr>
@@ -1952,6 +1940,17 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                                     </tr>
                                 </table>
                             </div>
+                         """
+                     
+                     html = f"""
+                     <div style="background-color: #1a1e24; border-radius: 8px; padding: 10px; margin-bottom: 10px; border: 1px solid #333;">
+                        <div style="font-size: 0.8rem; color: #888; margin-bottom: 4px;">{label}</div>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                            <div>
+                                <div style="font-size: 1.8rem; font-weight: bold; color: white;">{val_main}</div>
+                                <div style="font-size: 0.9rem; color: {color}; font-weight: bold;">{arrow} {abs(delta):.2f}</div>
+                            </div>
+                            {table_html}
                         </div>
                      </div>
                      """
@@ -1986,9 +1985,10 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                      v2 = s2['PP%']
                      d1 = v1 - v2
                      st.caption(f"Avantage Num: {t1}")
-                     st.markdown(render_stat_card("% Efficacité", f"{v1}%", d1, p_stats1, 'PP%', is_perc=True), unsafe_allow_html=True)
+                     # Hide Breakdown for PP since we can't calculate it
+                     st.markdown(render_stat_card("% Efficacité", f"{v1}%", d1, p_stats1, 'PP%', is_perc=True, show_table=False), unsafe_allow_html=True)
                      st.caption(f"Avantage Num: {t2}")
-                     st.markdown(render_stat_card("% Efficacité", f"{v2}%", -d1, p_stats2, 'PP%', is_perc=True), unsafe_allow_html=True)
+                     st.markdown(render_stat_card("% Efficacité", f"{v2}%", -d1, p_stats2, 'PP%', is_perc=True, show_table=False), unsafe_allow_html=True)
                      
                  # Discipline
                  with c4:
