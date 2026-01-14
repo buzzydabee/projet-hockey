@@ -6,6 +6,7 @@ import time
 from datetime import datetime
 from game_logic import GameReconstructor
 import streamlit.components.v1 as components
+import textwrap
 
 st.set_page_config(page_title="Hockey Stats Dashboard", layout="wide")
 
@@ -191,27 +192,26 @@ def calculate_standings(games, penalties, goals):
         s['PTS'] = (s['W'] * 2) + (s['T'] * 1) + s['FJ']
         
         # Percentages
-        s['PP%'] = round((s['PP_G'] / s['PP_Att'] * 100) if s['PP_Att'] > 0 else 0, 1)
-        s['PK%'] = round((s['PK_Kills'] / s['PK_Att'] * 100) if s['PK_Att'] > 0 else 0, 1)
+        # USE RECONSTRUCTED DATA FOR OFFICIAL DISPLAY AS PER USER REQUEST
+        s['PP%'] = round((s['PP_G_Rec'] / s['PP_Att_Rec'] * 100) if s['PP_Att_Rec'] > 0 else 0, 1)
+        s['PK%'] = round((s['PK_Kills_Rec'] / s['PK_Att_Rec'] * 100) if s['PK_Att_Rec'] > 0 else 0, 1)
         
-        # Rec Percentages
-        s['PP% Rec'] = round((s['PP_G_Rec'] / s['PP_Att_Rec'] * 100) if s['PP_Att_Rec'] > 0 else 0, 1)
-        s['PK% Rec'] = round((s['PK_Kills_Rec'] / s['PK_Att_Rec'] * 100) if s['PK_Att_Rec'] > 0 else 0, 1)
+        # Eliminated separate Rec columns
         
         # PTS/MJ
         s['PTS/MJ'] = round((s['PTS'] / s['GP']) if s['GP'] > 0 else 0, 3)
 
         # Format string "A/B"
         s['PP'] = f"{s['PP_G']}/{s['PP_Att']}"
-        s['PP (Rec)'] = f"{s['PP_G_Rec']}/{s['PP_Att_Rec']}"
+        # s['PP (Rec)'] = f"{s['PP_G_Rec']}/{s['PP_Att_Rec']}" # Removed
         s['PK'] = f"{s['PK_Kills']}/{s['PK_Att']}"
-        s['PK (Rec)'] = f"{s['PK_Kills_Rec']}/{s['PK_Att_Rec']}"
+        # s['PK (Rec)'] = f"{s['PK_Kills_Rec']}/{s['PK_Att_Rec']}" # Removed
         s['PIM'] = pim
         s['DIFF'] = s['GF'] - s['GA']
         
         stats.append(s)
         
-    cols_to_show = ['Team', 'PTS/MJ', 'PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'DIFF', 'PP%', 'PP% Rec', 'PK%', 'PK% Rec', 'PIM']
+    cols_to_show = ['Team', 'PTS/MJ', 'PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'DIFF', 'PP%', 'PK%', 'PIM']
     
     # Return empty if needed
     if not stats:
@@ -231,7 +231,7 @@ def calculate_standings(games, penalties, goals):
     
     if not selected_teams:
         st.warning("Please select at least one team to view stats.")
-        cols_to_show = ['Team', 'PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'PP%', 'PP% Rec', 'PK%', 'PK% Rec', 'PIM']
+        cols_to_show = ['Team', 'PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'PP%', 'PK%', 'PIM']
         st.dataframe(pd.DataFrame(columns=cols_to_show), use_container_width=True)
     else:
         # Filter for Standings based on SELECTED TEAMS
@@ -636,34 +636,56 @@ def main():
     try:
         # Check for standard list param (Streamlit returns list or string)
         qt = st.query_params.get_all("selected_teams_custom") # Returns list
-        if qt and len(qt) >= 2:
-             st.session_state["filter_mode_idx"] = 2 # Index for "Sélection Personnalisée"
-             st.session_state["selected_teams_custom"] = qt # Set widget state directly
-             # Clear params to avoid sticky URL state? Optional.
-        
+        if qt:
+             # Robust Matching Helper
+             def normalize_key(k):
+                 import unicodedata
+                 n = unicodedata.normalize('NFKD', str(k)).encode('ASCII', 'ignore').decode('utf-8')
+                 return n.lower().strip().replace(" ", "")
+                 
+             # Create map of normalized -> real name
+             team_map = {normalize_key(t): t for t in all_teams}
+             
+             valid_qt = []
+             for t in qt:
+                 nk = normalize_key(t)
+                 if nk in team_map:
+                     valid_qt.append(team_map[nk])
+             
+             if len(valid_qt) >= 2:
+                 st.session_state["filter_mode_idx"] = 2 
+                 # st.session_state["filter_mode"] = "Sélection Personnalisée" # Removed key
+                 st.session_state["selected_teams_custom"] = valid_qt 
+                 st.query_params.clear()
+                 st.rerun()
+             else:
+                 # Fallback: Just log or ignore, or show subtle warning
+                 pass
+
         # Legacy Support (if any)
         elif "action" in st.query_params and st.query_params["action"] == "face_to_face":
             t1 = st.query_params.get("t1")
             t2 = st.query_params.get("t2")
             if t1 and t2:
-                 st.session_state["filter_mode_idx"] = 2
-                 st.session_state["selected_teams_custom"] = [t1, t2]
-                 # Multiselect needs list
-                 st.session_state.selected_teams_custom = [t1, t2]
-                 st.session_state.filter_mode = "Sélection Personnalisée"
-                 # Multiselect needs list
-                 st.session_state.selected_teams_custom = [t1, t2]
-                 # st.session_state.calc_mode = "Stats Globales" # Removed as widget is gone
-                 st.query_params.clear()
-                 st.rerun()
+                 # Check existence
+                 if t1 in all_teams and t2 in all_teams:
+                     st.session_state["filter_mode_idx"] = 2
+                     st.session_state["filter_mode"] = "Sélection Personnalisée"
+                     st.session_state["selected_teams_custom"] = [t1, t2]
+                     st.query_params.clear()
+                     st.rerun()
     except Exception as e:
-        status_container.write(f"Erreur param: {e}")
+        st.error(f"Erreur param: {e}")
     
+    # Init dynamic key version
+    if "radio_ver" not in st.session_state:
+        st.session_state["radio_ver"] = 0
+        
     filter_mode = st.sidebar.radio(
         "Mode de Sélection", 
         ["Toutes les équipes", "Par Division", "Sélection Personnalisée"], 
         index=st.session_state.get("filter_mode_idx", 0),
-        key="filter_mode"
+        key=f"mode_{st.session_state['radio_ver']}"
     )
     
     selected_teams = []
@@ -1141,8 +1163,7 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
     # Define Renaming Map (English -> French)
     col_rename_map = {
         'Team': 'Équipe', 'GP': 'MJ', 'W': 'V', 'L': 'D', 'T': 'N',
-        'GF': 'BP', 'GA': 'BC', 'PP%': '%AN', 'PK%': '%DN', 'PIM': 'PUN',
-        'PP% Rec': '%AN (Rec)', 'PK% Rec': '%DN (Rec)'
+        'GF': 'BP', 'GA': 'BC', 'PP%': '%AN', 'PK%': '%DN', 'PIM': 'PUN'
     }
     
     # DISPLAY FILTERING
@@ -1159,7 +1180,8 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
          standings = standings.rename(columns=col_rename_map)
          
          # Force Numeric Types (Fixes Left Alignment issue)
-         numeric_cols = ['PTS', 'MJ', 'V', 'D', 'N', 'BP', 'BC', 'DIFF', 'PUN', '%AN (Rec)', '%DN (Rec)']
+         # Force Numeric Types (Fixes Left Alignment issue)
+         numeric_cols = ['PTS', 'MJ', 'V', 'D', 'N', 'BP', 'BC', 'DIFF', 'PUN']
          for c in numeric_cols:
              if c in standings.columns:
                  standings[c] = pd.to_numeric(standings[c], errors='coerce').fillna(0)
@@ -1169,9 +1191,9 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
          standings.index += 1
     else:
          # Create empty with correct columns to avoid KeyError
-         standings = pd.DataFrame(columns=['Équipe', 'PTS/MJ', 'PTS', 'MJ', 'V', 'D', 'N', 'FJ', 'BP', 'BC', 'DIFF', '%AN', '%AN (Rec)', '%DN', '%DN (Rec)', 'PUN'])
+         standings = pd.DataFrame(columns=['Équipe', 'PTS/MJ', 'PTS', 'MJ', 'V', 'D', 'N', 'FJ', 'BP', 'BC', 'DIFF', '%AN', '%DN', 'PUN'])
 
-    cols_to_show = ['Équipe', 'PTS/MJ', 'PTS', 'MJ', 'V', 'D', 'N', 'FJ', 'BP', 'BC', 'DIFF', '%AN', '%AN (Rec)', '%DN', '%DN (Rec)', 'PUN']
+    cols_to_show = ['Équipe', 'PTS/MJ', 'PTS', 'MJ', 'V', 'D', 'N', 'FJ', 'BP', 'BC', 'DIFF', '%AN', '%DN', 'PUN']
     
     # Normalization Logic
     if normalize:
@@ -1271,8 +1293,7 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             # Explicitly ensure the map is available or define it here if needed
             rename_map_local = {
                 'Team': 'Équipe', 'GP': 'MJ', 'W': 'V', 'L': 'D', 'T': 'N',
-                'GF': 'BP', 'GA': 'BC', 'PP%': '%AN', 'PK%': '%DN', 'PIM': 'PUN',
-                'PP% Rec': '%AN (Rec)', 'PK% Rec': '%DN (Rec)'
+                'GF': 'BP', 'GA': 'BC', 'PP%': '%AN', 'PK%': '%DN', 'PIM': 'PUN'
             }
             st_global = st_global.rename(columns=rename_map_local)
             
@@ -1299,224 +1320,35 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             # Define stats_cols for centering (exclude text columns)
             stats_cols = [c for c in cols_display if c not in ['Rang', 'Équipe']]
             
-            # Apply Style to STANDINGS (Local/Filtered)
-            styler_standings = standings[cols_display].style.set_properties(
-                subset=list(set(cols_display) & set(stats_cols)), # Center numbers only
-                **{'text-align': 'center'}
-            ).set_properties(
-                subset=['Rang', 'Équipe'], # White text for names/rank
-                **{'color': '#ffffff', 'font-weight': 'bold'}
-            ).set_table_styles([
-                {'selector': 'th', 'props': [('text-align', 'center !important')]},
-                {'selector': 'thead th', 'props': [('text-align', 'center !important')]},
-                {'selector': '.col_heading', 'props': [('text-align', 'center !important')]},
-                {'selector': 'td', 'props': [('text-align', 'center !important')]}
-            ]).hide(axis='index') # Hide the default pandas index
-            
-            # Gradients logic - Use st_global for vmin/vmax context
-            for col in std_pos:
-                vmin, vmax = None, None
-                if games_global is not None and not st_global.empty and col in st_global.columns:
-                     vmin = st_global[col].min()
-                     vmax = st_global[col].max()
-                elif col in standings.columns:
-                     vmin = standings[col].min()
-                     vmax = standings[col].max()
-                     
-                styler_standings = styler_standings.background_gradient(cmap=cmap_pos, subset=[col], vmin=vmin, vmax=vmax)
-        
-            for col in std_neg:
-                vmin, vmax = None, None
-                if games_global is not None and not st_global.empty and col in st_global.columns:
-                    vmin = st_global[col].min()
-                    vmax = st_global[col].max()
-                elif col in standings.columns:
-                     vmin = standings[col].min()
-                     vmax = standings[col].max()
-                     
-                styler_standings = styler_standings.background_gradient(cmap=cmap_neg, subset=[col], vmin=vmin, vmax=vmax)
-            
-            # --- HELPER FOR SCROLLABLE TABLES ---
-            # (No change needed here, function definition follows)
-
-    def render_scrollable_table(styler, height=500):
-        """
-        Renders a Pandas Styler as a fully interactive HTML table (Sortable + Centered).
-        Uses streamlit.components.v1 to inject JS/CSS properly.
-        """
-        # Convert Styler to HTML
-        html_table = styler.to_html(escape=False)
-        
-        # Define CSS (Dark Mode + Sticky Header + Centered)
-        css = """
-        <style>
-            body { 
-                font-family: sans-serif; 
-                background-color: #0e1117; 
-                color: white; 
-                margin: 0; 
-                overflow: hidden; /* Disable body scroll, force internal div scroll */
-            }
-            .table-container { 
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                overflow: auto; /* Scroll bar belongs here */
-                border: 1px solid #333;
-            }
-            table { width: 100%; border-collapse: collapse; }
-            th, td { 
-                padding: 8px 12px; 
-                text-align: center !important; 
-                border-bottom: 1px solid #333;
-                white-space: nowrap; 
-            }
-            th {
-                position: -webkit-sticky; 
-                position: sticky;
-                top: 0;
-                background-color: #1f2329; 
-                box-shadow: 0 1px 0 #444; 
-                color: #ffffff;
-                cursor: pointer;
-                user-select: none;
-                z-index: 1000; /* High z-index */
-                border-bottom: 2px solid #444;
-            }
-            th:hover { background-color: #2d333b; }
-            tr:hover { background-color: #1c2026; }
-            
-            /* Custom Scrollbar */
-            ::-webkit-scrollbar { width: 10px; height: 10px; }
-            ::-webkit-scrollbar-track { background: #0e1117; }
-            ::-webkit-scrollbar-thumb { background: #444; border-radius: 5px; }
-            ::-webkit-scrollbar-thumb:hover { background: #666; }
-        </style>
-        """
-        
-        # Define JS for Sorting (Robust: Numeric vs String)
-        js = """
-        <script>
-        function sortTable(n) {
-          var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
-          table = document.querySelector("table");
-          switching = true;
-          // Set the sorting direction to ascending:
-          dir = "asc"; 
-          
-          while (switching) {
-            switching = false;
-            rows = table.rows;
-            /* Loop through all table rows (except the first, which contains table headers): */
-            for (i = 1; i < (rows.length - 1); i++) {
-              shouldSwitch = false;
-              x = rows[i].getElementsByTagName("TD")[n];
-              y = rows[i + 1].getElementsByTagName("TD")[n];
-              
-              var xContent = x.innerText || x.textContent;
-              var yContent = y.innerText || y.textContent;
-              
-              // Try to convert to float for comparison
-              var xNum = parseFloat(xContent.replace(/,/g, '').replace('%', ''));
-              var yNum = parseFloat(yContent.replace(/,/g, '').replace('%', ''));
-              var isNum = !isNaN(xNum) && !isNaN(yNum) && xContent.trim() !== "" && yContent.trim() !== "";
-              
-              if (dir == "asc") {
-                if (isNum) {
-                    if (xNum > yNum) { shouldSwitch = true; break; }
-                } else {
-                    if (xContent.toLowerCase() > yContent.toLowerCase()) { shouldSwitch = true; break; }
-                }
-              } else if (dir == "desc") {
-                if (isNum) {
-                    if (xNum < yNum) { shouldSwitch = true; break; }
-                } else {
-                    if (xContent.toLowerCase() < yContent.toLowerCase()) { shouldSwitch = true; break; }
-                }
-              }
-            }
-            if (shouldSwitch) {
-              rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
-              switching = true;
-              switchcount ++;      
-            } else {
-              if (switchcount == 0 && dir == "asc") {
-                dir = "desc";
-                switching = true;
-              }
-            }
-          }
-        }
-        
-        // Attach click listeners to headers
-        document.addEventListener("DOMContentLoaded", function() {
-            var headers = document.querySelectorAll("th");
-            headers.forEach(function(th, index) {
-                th.addEventListener("click", function() {
-                    sortTable(index);
-                });
-            });
-        });
-        </script>
-        """
-        
-        full_html = f"{css}\n<div class='table-container'>{html_table}</div>\n{js}"
-        
-        # Dynamic Height Calculation
-        # Estimate: 40px for header + 35px per row
-        # We cap at the requested height (e.g. 500) to ensure scrolling for large datasets
-        # But allow shrinking for small datasets (e.g. 1 team selected)
-        try:
-             num_rows = len(styler.data)
-        except:
-             num_rows = 10 # Fallback
-             
-        calc_height = (num_rows * 35) + 40
-        
-        # Use height argument as MAX height
-        final_height = min(calc_height, height) if height else calc_height
-        
-        # Adjust container CSS to match final_height if smaller (visual polish)
-        # Actually components.html height is the iframe height.
-        # CSS .table-container height: 100vh might overlap or cut off.
-        # We should set .table-container height to match iframe height or 100%
-        # Let's fix CSS to be 100% of iframe.
-        
-        # Update CSS in full_html to use dynamic height for container?
-        # Actually, components.html controls the iframe size. 
-        # Inside, we want the table to take up available space.
-        # So .table-container { height: 100%; ... } is better than 100vh.
-        # Inject HTML with explicit non-scrolling iframe to force internal div logic
-        components.html(f"""
-        {css}
-        <div class="table-container">
-            {html_table}
-        </div>
-        {js}
-        """, height=final_height, scrolling=False)
-
-    # --- FORMATTING (for HTML) ---
-    # Apply precise formatting
-    formatter = {}
-    
-    # Decimals (PTS/MJ, M/G ratios) - 3 decimals
-    for c in cols_data:
-        if 'PTS/MJ' in c or '/MJ' in c:
-            formatter[c] = "{:.2f}"
-        elif '%' in c or 'Arr' in c or 'Moy' in c: # Percentages and GAA
-            if '%' in c or 'Arr' in c:
-               formatter[c] = "{:.1f}%"
-            # Moy is handled in goalies but generic rule here
-        elif c in ['PTS', 'V', 'D', 'N', 'FJ', 'BP', 'BC', 'DIFF', 'PUN', 'GP', 'MJ']: 
-             formatter[c] = "{:.0f}"
-             
-    # Apply format
-    styler_standings = styler_standings.format(formatter)
+    # Styling logic removed - replaced by native st.dataframe config above
     
     # Render using Helper
-    render_scrollable_table(styler_standings, height=500)
+    # Format for display (st.dataframe)
+    # Define Column Configuration for Standings
+    s_col_config = {
+        "Rang": st.column_config.NumberColumn("Rang", format="%d", width="small"),
+        "Équipe": st.column_config.TextColumn("Équipe", width="large"),
+        "PTS/MJ": st.column_config.NumberColumn("PTS/MJ", format="%.2f"),
+        "%AN": st.column_config.NumberColumn("%AN", format="%.1f%%"),
+        "%DN": st.column_config.NumberColumn("%DN", format="%.1f%%"),
+    }
+    
+    # Helper for other float columns
+    for c in cols_display:
+         if c not in s_col_config and c not in ['Rang', 'Équipe']:
+              if '/MJ' in c: # Ratio
+                   s_col_config[c] = st.column_config.NumberColumn(c, format="%.2f")
+              elif '%' in c: # Percent
+                   s_col_config[c] = st.column_config.NumberColumn(c, format="%.1f%%")
+              else:
+                   s_col_config[c] = st.column_config.NumberColumn(c, format="%d")
+    
+    st.dataframe(
+        standings[cols_display],
+        column_config=s_col_config,
+        use_container_width=True,
+        hide_index=True
+    )
     
     # --- GOALIE STATS ---
     if 'leg_goalies' not in st.session_state: st.session_state.leg_goalies = False
@@ -1593,67 +1425,34 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             # Cols to display (Nom is now included in columns)
             cols_display = ['Rang'] + cols 
             
-            # Center logic: anything that is numeric
-            stats_cols_g = [c for c in cols_display if c not in ['Rang', 'Nom', 'Équipe', 'TG_str']]
-
-            styler_gdf = gdf[cols_display].style.set_properties(
-                subset=list(set(cols_display) & set(stats_cols_g)), # Center numbers only
-                **{'text-align': 'center'}
-            ).set_properties(
-                subset=['Rang', 'Nom'], # White
-                **{'color': '#ffffff', 'font-weight': 'bold'}
-            ).set_table_styles([
-                {'selector': 'th', 'props': [('text-align', 'center !important')]},
-                {'selector': 'thead th', 'props': [('text-align', 'center !important')]},
-                {'selector': '.col_heading', 'props': [('text-align', 'center !important')]},
-                {'selector': 'td', 'props': [('text-align', 'center !important')]}
-            ]).hide(axis='index')
+            # Format for display (st.dataframe handles basic formatting, but we can refine)
+            # We want specific column configs
             
-            g_pos = [c for c in cols_display if get_column_type(c) == 'pos']
-            g_neg = [c for c in cols_display if get_column_type(c) == 'neg']
+            # Define Column Configuration
+            g_col_config = {
+                "Rang": st.column_config.NumberColumn("Rang", format="%d", width="small"),
+                "Nom": st.column_config.TextColumn("Nom", width="medium"),
+                "Équipe": st.column_config.TextColumn("Équipe", width="medium"),
+                "MJ": st.column_config.NumberColumn("MJ", format="%d"),
+                "MA": st.column_config.NumberColumn("MA", format="%.2f" if normalize else "%d"),
+                "V": st.column_config.NumberColumn("V", format="%.2f" if normalize else "%d"),
+                "D": st.column_config.NumberColumn("D", format="%.2f" if normalize else "%d"),
+                "N": st.column_config.NumberColumn("N", format="%.2f" if normalize else "%d"),
+                "BL": st.column_config.NumberColumn("BL", format="%.2f" if normalize else "%d"),
+                "BC": st.column_config.NumberColumn("BC", format="%.2f" if normalize else "%d"),
+                "Moy": st.column_config.NumberColumn("Moy", format="%.2f"),
+                "%Arr": st.column_config.NumberColumn("%Arr", format="%.3f"),
+                "TG_str": st.column_config.TextColumn("TG", width="small"),
+            }
             
-            # Global Context for Goalies
-            df_goal_global = pd.DataFrame()
-            if games_global is not None:
-                 g_ids_global = games_global['game_id'].unique()
-                 df_goal_global = calculate_goalie_stats(conn, g_ids_global)
-                 
-                 if not df_goal_global.empty:
-                     # Rename Global to match French Schema
-                     df_goal_global = df_goal_global.rename(columns={'Name': 'Nom', 'Team': 'Équipe'})
-                 
-                     if normalize:
-                         for c, new_c in g_norm_map.items():
-                             # Verify column exists
-                             if c in df_goal_global.columns:
-                                 df_goal_global[new_col] = df_goal_global.apply(lambda r: r[c]/r['MJ'] if r['MJ'] > 0 else 0, axis=1)
-
-            for col in g_pos:
-                vmin, vmax = None, None
-                if not df_goal_global.empty and col in df_goal_global.columns:
-                     vmin = df_goal_global[col].min()
-                     vmax = df_goal_global[col].max()
-                styler_gdf = styler_gdf.background_gradient(cmap=cmap_pos, subset=[col], vmin=vmin, vmax=vmax)
-                
-            for col in g_neg:
-                vmin, vmax = None, None
-                if not df_goal_global.empty and col in df_goal_global.columns:
-                     vmin = df_goal_global[col].min()
-                     vmax = df_goal_global[col].max()
-                styler_gdf = styler_gdf.background_gradient(cmap=cmap_neg, subset=[col], vmin=vmin, vmax=vmax)
+            # Adjust config for normalized columns if needed (mostly covered above)
             
-            # Format
-            g_fmt = {}
-            for c in cols_display:
-                if 'Moy' in c: g_fmt[c] = "{:.2f}"
-                elif '%Arr' in c: g_fmt[c] = "{:.3f}"
-                elif '/MJ' in c: g_fmt[c] = "{:.2f}"
-                elif c not in ['Rang', 'Nom', 'Équipe', 'TG_str']: g_fmt[c] = "{:.0f}"
-            
-            styler_gdf = styler_gdf.format(g_fmt)
-            
-            # Render Goalies
-            render_scrollable_table(styler_gdf, height=400)
+            st.dataframe(
+                gdf[cols_display],
+                column_config=g_col_config,
+                use_container_width=True,
+                hide_index=True
+            )
     
     # --- ADVANCED PLAYER STATS ---
     if 'leg_players' not in st.session_state: st.session_state.leg_players = False
@@ -1792,19 +1591,38 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             p_pos = [c for c in cols_display_p if get_column_type(c) == 'pos']
             p_neg = [c for c in cols_display_p if get_column_type(c) == 'neg']
 
-            if p_pos: styler_pdf = styler_pdf.background_gradient(cmap=cmap_pos, subset=p_pos)
-            if p_neg: styler_pdf = styler_pdf.background_gradient(cmap=cmap_neg, subset=p_neg)
+            # Format for display (st.dataframe)
+            # Define Column Configuration
+            p_col_config = {
+                "Rang": st.column_config.NumberColumn("Rang", format="%d", width="small"),
+                "Nom": st.column_config.TextColumn("Nom", width="medium"),
+                "Équipe": st.column_config.TextColumn("Équipe", width="medium"),
+                "MJ": st.column_config.NumberColumn("MJ", format="%d"),
+                "B": st.column_config.NumberColumn("B", format="%.2f" if normalize else "%d"),
+                "A": st.column_config.NumberColumn("A", format="%.2f" if normalize else "%d"),
+                "PTS": st.column_config.NumberColumn("PTS", format="%.2f" if normalize else "%d"),
+                "PTS/MJ": st.column_config.NumberColumn("PTS/MJ", format="%.2f"),
+                "PEM": st.column_config.NumberColumn("PEM", format="%.2f" if normalize else "%d"),
+                "PUN": st.column_config.NumberColumn("PUN", format="%.2f" if normalize else "%d"),
+                "PTS_AN": st.column_config.NumberColumn("PTS_AN", format="%.2f" if normalize else "%d"),
+                "PTS_IN": st.column_config.NumberColumn("PTS_IN", format="%.2f" if normalize else "%d"),
+                # Add others as needed (BAN, BP, etc.)
+            }
             
-            # Format
-            p_fmt = {}
+            # Helper for other float columns
             for c in cols_display_p:
-                if '/MJ' in c or 'PTS/MJ' in c: p_fmt[c] = "{:.2f}"
-                elif c not in ['Rang', 'Nom', 'Équipe']: p_fmt[c] = "{:.0f}" # Integers for counts
+                 if c not in p_col_config and c not in ['Rang', 'Nom', 'Équipe']:
+                      if '/MJ' in c or 'PTS' in c or 'Mo' in c: # Ratio or float
+                           p_col_config[c] = st.column_config.NumberColumn(c, format="%.2f")
+                      else:
+                           p_col_config[c] = st.column_config.NumberColumn(c, format="%.2f" if normalize else "%d")
             
-            styler_pdf = styler_pdf.format(p_fmt)
-            
-            # Render Players
-            render_scrollable_table(styler_pdf, height=450)
+            st.dataframe(
+                p_df[cols_display_p],
+                column_config=p_col_config,
+                use_container_width=True,
+                hide_index=True
+            )
 
 
     # --- TEAM METRICS & JOURNAL ---
@@ -1897,6 +1715,50 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                     try: return int(str(d).split(':')[0])
                     except: return 0
                 
+                # PP%: Calculate using Reconstructor
+                # Initialize Reconstructor
+                reconstructor = GameReconstructor()
+                
+                pp_stats_agg = {1: {'g': 0, 'att': 0}, 2: {'g': 0, 'att': 0}, 3: {'g': 0, 'att': 0}}
+                pk_stats_agg = {1: {'g_against': 0, 'att': 0}, 2: {'g_against': 0, 'att': 0}, 3: {'g_against': 0, 'att': 0}}
+                
+                # Check mapping
+                # We need home_team_id and visitor_team_id from t_games
+                
+                for _, g_row in t_games.iterrows():
+                    gid = g_row['game_id']
+                    hid = g_row['home_team_id']
+                    vid = g_row['visitor_team_id']
+                    
+                    # Filter events for this game
+                    g_goals = goals[goals['game_id'] == gid]
+                    g_pens = penalties[penalties['game_id'] == gid]
+                    
+                    if not g_goals.empty or not g_pens.empty: # Optimization
+                        rec = reconstructor.reconstruct_game_stats(gid, g_goals, g_pens, hid, vid)
+                        
+                        # Add to aggregate if period exists
+                        if 'per_period' in rec:
+                           # Determine if Team is Home or Visitor
+                           is_home = (g_row['home'] == team)
+                           
+                           for p in [1, 2, 3]:
+                               if p in rec['per_period']:
+                                   p_data = rec['per_period'][p]
+                                   # PK Stats (Opponent PP)
+                                   if is_home:
+                                       pp_stats_agg[p]['g'] += p_data['pp_g_home']
+                                       pp_stats_agg[p]['att'] += p_data['pp_att_home']
+                                       
+                                       pk_stats_agg[p]['g_against'] += p_data['pp_g_vis']
+                                       pk_stats_agg[p]['att'] += p_data['pp_att_vis']
+                                   else:
+                                       pp_stats_agg[p]['g'] += p_data['pp_g_vis']
+                                       pp_stats_agg[p]['att'] += p_data['pp_att_vis']
+                                       
+                                       pk_stats_agg[p]['g_against'] += p_data['pp_g_home']
+                                       pk_stats_agg[p]['att'] += p_data['pp_att_home']
+
                 for p in [1, 2, 3]:
                     # GF: Goals by Team in Period P
                     gf = len(t_goals[(t_goals['team_name'] == team) & (t_goals['period'] == p)])
@@ -1912,8 +1774,21 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                     pim_mins = t_pens_p['duration'].apply(parse_pim).sum()
                     stats[p]['PIM_avg'] = pim_mins / gp
                     
-                    # PP%: Not available per period in DB
-                    stats[p]['PP%'] = 0.0
+                    # PP%
+                    att = pp_stats_agg[p]['att']
+                    if att > 0:
+                        stats[p]['PP%'] = (pp_stats_agg[p]['g'] / att) * 100
+                    else:
+                        stats[p]['PP%'] = 0.0
+                        
+                    # PK%
+                    pk_att = pk_stats_agg[p]['att']
+                    if pk_att > 0:
+                        # PK Kill = Att - Goals Against
+                        kills = pk_att - pk_stats_agg[p]['g_against']
+                        stats[p]['PK%'] = (kills / pk_att) * 100
+                    else:
+                        stats[p]['PK%'] = 0.0
                 
                 return stats
 
@@ -1924,15 +1799,44 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                  p_stats1 = get_period_breakdown(t1, games)
                  p_stats2 = get_period_breakdown(t2, games)
                  
-                 # HTML Component for Metric + MiniTable
-                 def render_stat_card(label, val_main, delta, p_data, key_suffix, is_inverse=False, is_perc=False, val_fmt="{:.2f}", show_table=True):
-                     color = "#ffffff"
-                     if delta > 0: color = "#4caf50" if not is_inverse else "#ff4b4b"
-                     elif delta < 0: color = "#ff4b4b" if not is_inverse else "#4caf50"
-                     else: color = "#888"
+                 # Helper for Color Gradient
+                 def get_gradient_color(delta, limit, is_inverse=False):
+                     # Determine polarity
+                     # Good for us: delta > 0 (Green) unless inverse (Red)
+                     # Bad for us: delta < 0 (Red) unless inverse (Green)
                      
-                     arrow = "↑" if delta > 0 else "↓"
-                     if delta == 0: arrow = "-"
+                     val = max(min(delta, limit), -limit) # Clamp
+                     ratio = abs(val) / limit
+                     
+                     # Colors (RGB)
+                     # White: 255, 255, 255 (at ratio 0)
+                     # Green: 76, 175, 80 (#4caf50)
+                     # Red: 255, 75, 75 (#ff4b4b)
+                     
+                     # Determine target color based on "Goodness"
+                     is_good = (delta > 0 and not is_inverse) or (delta < 0 and is_inverse)
+                     
+                     if is_good:
+                         # Mix White -> Green
+                         r = int(255 + (76 - 255) * ratio)
+                         g = int(255 + (175 - 255) * ratio)
+                         b = int(255 + (80 - 255) * ratio)
+                     else:
+                         # Mix White -> Red
+                         r = int(255 + (255 - 255) * ratio)
+                         g = int(255 + (75 - 255) * ratio)
+                         b = int(255 + (75 - 255) * ratio)
+                         
+                     return f"rgb({r}, {g}, {b})"
+
+                 # HTML Component for Metric + MiniTable
+                 def render_stat_card(label, val_main, delta, p_data, p_data_opp, key_suffix, is_inverse=False, is_perc=False, val_fmt="{:.2f}", show_table=True):
+                     # Determine Limit based on metric type
+                     limit = 1.5 # Default (Goals)
+                     if is_perc: limit = 15.0 # Percentages (PP/PK)
+                     elif 'PIM' in key_suffix: limit = 6.0 # PIM
+                     
+                     color = get_gradient_color(delta, limit, is_inverse)
                      
                      table_html = ""
                      if show_table:
@@ -1940,80 +1844,129 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                              if is_perc: return f"{val:.0f}%" # Compact %
                              return f"{val:.1f}" # Compact float
                          
-                         v_p1 = fmt_mini(p_data[1][key_suffix])
-                         v_p2 = fmt_mini(p_data[2][key_suffix])
-                         v_p3 = fmt_mini(p_data[3][key_suffix])
+                         # P1
+                         v_p1_raw = p_data[1][key_suffix]
+                         v_p1_opp = p_data_opp[1][key_suffix]
+                         d_p1 = v_p1_raw - v_p1_opp
+                         c_p1 = get_gradient_color(d_p1, limit, is_inverse)
+                         v_p1 = fmt_mini(v_p1_raw)
                          
-                         table_html = f"""
-<div style="margin-left: 10px;">
-    <table style="font-size: 0.75rem; text-align: center; border-collapse: collapse;">
-        <tr style="color: #666; border-bottom: 1px solid #444;"><td>P1</td><td>P2</td><td>P3</td></tr>
-        <tr style="color: #ccc;">
-            <td style="padding: 2px 4px;">{v_p1}</td>
-            <td style="padding: 2px 4px;">{v_p2}</td>
-            <td style="padding: 2px 4px;">{v_p3}</td>
-        </tr>
-    </table>
-</div>
-"""
+                         # P2
+                         v_p2_raw = p_data[2][key_suffix]
+                         v_p2_opp = p_data_opp[2][key_suffix]
+                         d_p2 = v_p2_raw - v_p2_opp
+                         c_p2 = get_gradient_color(d_p2, limit, is_inverse)
+                         v_p2 = fmt_mini(v_p2_raw)
+
+                         # P3
+                         v_p3_raw = p_data[3][key_suffix]
+                         v_p3_opp = p_data_opp[3][key_suffix]
+                         d_p3 = v_p3_raw - v_p3_opp
+                         c_p3 = get_gradient_color(d_p3, limit, is_inverse)
+                         v_p3 = fmt_mini(v_p3_raw)
+                         
+                         table_html = (
+                             '<div style="margin-left: 5px;">'
+                             '<table style="font-size: 1.1rem; text-align: center; border-collapse: collapse;">'
+                             '<tr style="color: #666; border-bottom: 1px solid #444;"><td>P1</td><td>P2</td><td>P3</td></tr>'
+                             '<tr style="color: #ccc;">'
+                             f'<td style="padding: 2px 8px; color: {c_p1}; font-weight: bold;">{v_p1}</td>'
+                             f'<td style="padding: 2px 8px; color: {c_p2}; font-weight: bold;">{v_p2}</td>'
+                             f'<td style="padding: 2px 8px; color: {c_p3}; font-weight: bold;">{v_p3}</td>'
+                             '</tr></table></div>'
+                         )
                      
-                     html = f"""
-<div style="background-color: #1a1e24; border-radius: 8px; padding: 10px; margin-bottom: 10px; border: 1px solid #333;">
-    <div style="font-size: 0.8rem; color: #888; margin-bottom: 4px;">{label}</div>
-    <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-        <div>
-            <div style="font-size: 1.8rem; font-weight: bold; color: white;">{val_main}</div>
-            <div style="font-size: 0.9rem; color: {color}; font-weight: bold;">{arrow} {abs(delta):.2f}</div>
-        </div>
-        {table_html}
-    </div>
-</div>
-"""
+                     label_html = f'<div style="font-size: 0.8rem; color: #888; margin-bottom: 4px;">{label}</div>' if label else ''
+                     
+                     html = (
+                         '<div style="background-color: #1a1e24; border-radius: 8px; padding: 10px; margin-bottom: 10px; border: 1px solid #333;">'
+                         f'{label_html}'
+                         '<div style="display: flex; align-items: flex-end; gap: 15px;">'
+                         '<div>'
+                         f'<div style="font-size: 1.8rem; font-weight: bold; color: {color};">{val_main}</div>'
+                         '</div>'
+                         '</div>'
+                         f'{table_html}'
+                         '</div></div>'
+                     )
                      return html
 
-                 c1, c2, c3, c4 = st.columns(4)
+                 # --- LAYOUT REFACTORING (Matrix Style) ---
                  
-                 # Offense
-                 with c1:
-                     # Team 1
-                     v1 = round(s1['GF']/s1['GP'], 2) if s1['GP'] else 0
-                     v2 = round(s2['GF']/s2['GP'], 2) if s2['GP'] else 0
-                     d1 = v1 - v2
-                     st.caption(f"Attaque: {t1}")
-                     st.markdown(render_stat_card("Buts Pour / Match", v1, d1, p_stats1, 'GF_avg'), unsafe_allow_html=True)
-                     st.caption(f"Attaque: {t2}")
-                     st.markdown(render_stat_card("Buts Pour / Match", v2, -d1, p_stats2, 'GF_avg'), unsafe_allow_html=True)
-                     
-                 # Defense
-                 with c2:
-                     v1 = round(s1['GA']/s1['GP'], 2) if s1['GP'] else 0
-                     v2 = round(s2['GA']/s2['GP'], 2) if s2['GP'] else 0
-                     d1 = v1 - v2
-                     st.caption(f"Défense: {t1}")
-                     st.markdown(render_stat_card("Buts Contre / Match", v1, d1, p_stats1, 'GA_avg', is_inverse=True), unsafe_allow_html=True)
-                     st.caption(f"Défense: {t2}")
-                     st.markdown(render_stat_card("Buts Contre / Match", v2, -d1, p_stats2, 'GA_avg', is_inverse=True), unsafe_allow_html=True)
+                 # 1. Pre-calculate all metrics and deltas to decouple from rendering order
+                 # Offense (GF/GP)
+                 off_v1 = round(s1['GF']/s1['GP'], 1) if s1['GP'] else 0
+                 off_v2 = round(s2['GF']/s2['GP'], 1) if s2['GP'] else 0
+                 off_d = off_v1 - off_v2
                  
-                 # Power Play
-                 with c3:
-                     v1 = s1['PP%']
-                     v2 = s2['PP%']
-                     d1 = v1 - v2
-                     st.caption(f"Avantage Num: {t1}")
-                     # Hide Breakdown for PP since we can't calculate it
-                     st.markdown(render_stat_card("% Efficacité", f"{v1}%", d1, p_stats1, 'PP%', is_perc=True, show_table=False), unsafe_allow_html=True)
-                     st.caption(f"Avantage Num: {t2}")
-                     st.markdown(render_stat_card("% Efficacité", f"{v2}%", -d1, p_stats2, 'PP%', is_perc=True, show_table=False), unsafe_allow_html=True)
-                     
-                 # Discipline
-                 with c4:
-                     p1 = round(s1['PIM']/s1['GP'], 1) if s1['GP'] else 0
-                     p2 = round(s2['PIM']/s2['GP'], 1) if s2['GP'] else 0
-                     d1 = p1 - p2
-                     st.caption(f"Discipline: {t1}")
-                     st.markdown(render_stat_card("PUN / Match", p1, d1, p_stats1, 'PIM_avg', is_inverse=True), unsafe_allow_html=True)
-                     st.caption(f"Discipline: {t2}")
-                     st.markdown(render_stat_card("PUN / Match", p2, -d1, p_stats2, 'PIM_avg', is_inverse=True), unsafe_allow_html=True)
+                 # Defense (GA/GP)
+                 def_v1 = round(s1['GA']/s1['GP'], 1) if s1['GP'] else 0
+                 def_v2 = round(s2['GA']/s2['GP'], 1) if s2['GP'] else 0
+                 def_d = def_v1 - def_v2
+                 
+                 # Power Play (PP%)
+                 pp_v1 = int(round(s1['PP%']))
+                 pp_v2 = int(round(s2['PP%']))
+                 pp_d = pp_v1 - pp_v2
+                 
+                 # Discipline (PIM/GP)
+                 pim_v1 = round(s1['PIM']/s1['GP'], 1) if s1['GP'] else 0
+                 pim_v2 = round(s2['PIM']/s2['GP'], 1) if s2['GP'] else 0
+                 pim_d = pim_v1 - pim_v2
+
+                 # PK (Total)
+                 pk_v1 = int(round(s1['PK%']))
+                 pk_v2 = int(round(s2['PK%']))
+                 pk_d = pk_v1 - pk_v2
+
+                 # 2. Render Header Row
+                 h_cols = st.columns([1.5, 2, 2, 2, 2, 2])
+                 
+                 def render_header(title, subtitle):
+                     return f"""<div style='text-align: center; margin-bottom: 10px;'>
+                         <div style='color: #bbb; text-transform: uppercase; font-size: 0.9rem; font-weight: bold; padding-bottom: 2px;'>{title}</div>
+                         <div style='color: #fff; font-size: 0.85rem; border-top: 1px solid #444; padding-top: 2px;'>{subtitle}</div>
+                     </div>"""
+                 
+                 with h_cols[1]: st.markdown(render_header("Attaque", "Buts Pour / Match"), unsafe_allow_html=True)
+                 with h_cols[2]: st.markdown(render_header("Défense", "Buts Contre / Match"), unsafe_allow_html=True)
+                 with h_cols[3]: st.markdown(render_header("Avantage Num.", "% Efficacité"), unsafe_allow_html=True)
+                 with h_cols[4]: st.markdown(render_header("Désavantage Num.", "% Efficacité"), unsafe_allow_html=True)
+                 with h_cols[5]: st.markdown(render_header("Discipline", "PUN / Match"), unsafe_allow_html=True)
+                 
+                 def render_team_label(name):
+                     return f"<div style='display: flex; align-items: center; height: 100%; font-weight: bold; font-size: 1.3rem; color: #00A8E8; padding-top: 25px; line-height: 1.2;'>{name}</div>"
+
+                 # 3. Render Team Rows
+                 # Team 1
+                 r1_cols = st.columns([1.5, 2, 2, 2, 2, 2])
+                 with r1_cols[0]:
+                     st.markdown(render_team_label(t1), unsafe_allow_html=True)
+                 with r1_cols[1]:
+                     st.markdown(render_stat_card("", off_v1, off_d, p_stats1, p_stats2, 'GF_avg'), unsafe_allow_html=True)
+                 with r1_cols[2]:
+                     st.markdown(render_stat_card("", def_v1, def_d, p_stats1, p_stats2, 'GA_avg', is_inverse=True), unsafe_allow_html=True)
+                 with r1_cols[3]:
+                     st.markdown(render_stat_card("", f"{pp_v1}%", pp_d, p_stats1, p_stats2, 'PP%', is_perc=True, show_table=True), unsafe_allow_html=True)
+                 with r1_cols[4]:
+                     st.markdown(render_stat_card("", f"{pk_v1}%", pk_d, p_stats1, p_stats2, 'PK%', is_perc=True, show_table=True), unsafe_allow_html=True)
+                 with r1_cols[5]:
+                     st.markdown(render_stat_card("", pim_v1, pim_d, p_stats1, p_stats2, 'PIM_avg', is_inverse=True), unsafe_allow_html=True)
+
+                 # Team 2
+                 r2_cols = st.columns([1.5, 2, 2, 2, 2, 2])
+                 with r2_cols[0]:
+                      st.markdown(render_team_label(t2), unsafe_allow_html=True)
+                 with r2_cols[1]:
+                     st.markdown(render_stat_card("", off_v2, -off_d, p_stats2, p_stats1, 'GF_avg'), unsafe_allow_html=True)
+                 with r2_cols[2]:
+                     st.markdown(render_stat_card("", def_v2, -def_d, p_stats2, p_stats1, 'GA_avg', is_inverse=True), unsafe_allow_html=True)
+                 with r2_cols[3]:
+                     st.markdown(render_stat_card("", f"{pp_v2}%", -pp_d, p_stats2, p_stats1, 'PP%', is_perc=True, show_table=True), unsafe_allow_html=True)
+                 with r2_cols[4]:
+                     st.markdown(render_stat_card("", f"{pk_v2}%", -pk_d, p_stats2, p_stats1, 'PK%', is_perc=True, show_table=True), unsafe_allow_html=True)
+                 with r2_cols[5]:
+                     st.markdown(render_stat_card("", pim_v2, -pim_d, p_stats2, p_stats1, 'PIM_avg', is_inverse=True), unsafe_allow_html=True)
             
             st.divider()
             
@@ -2047,17 +2000,18 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             
             with c_zone:
                 st.subheader("⚠️ Zone de Danger")
-                st.caption("Différentiel de buts par période (Saison)")
+                st.caption("Différentiel Buts Pour / Buts Contre par période (Saison)")
                 
                 # Simple HTML Table
-                z_html = f"""
-                <table style="width:100%; text-align:center; border-collapse: collapse;">
-                    <tr style="border-bottom:1px solid #444; color:#888;"><th>Période</th><th>{t1}</th><th>{t2}</th></tr>
-                    <tr><td>1ère</td><td style="color:{'#4caf50' if d1[1]>0 else '#ff4b4b'}">{d1[1]:+d}</td><td style="color:{'#4caf50' if d2[1]>0 else '#ff4b4b'}">{d2[1]:+d}</td></tr>
-                    <tr><td>2e</td><td style="color:{'#4caf50' if d1[2]>0 else '#ff4b4b'}">{d1[2]:+d}</td><td style="color:{'#4caf50' if d2[2]>0 else '#ff4b4b'}">{d2[2]:+d}</td></tr>
-                    <tr><td>3e</td><td style="color:{'#4caf50' if d1[3]>0 else '#ff4b4b'}">{d1[3]:+d}</td><td style="color:{'#4caf50' if d2[3]>0 else '#ff4b4b'}">{d2[3]:+d}</td></tr>
-                </table>
-                """
+                # Simple HTML Table
+                z_html = (
+                    '<table style="width:100%; text-align:center; border-collapse: collapse;">'
+                    f'<tr style="border-bottom:1px solid #444; color:#888;"><th>Période</th><th>{t1}</th><th>{t2}</th></tr>'
+                    f'<tr><td>1ère</td><td style="color:{"#4caf50" if d1[1]>0 else "#ff4b4b"}">{d1[1]:+d}</td><td style="color:{"#4caf50" if d2[1]>0 else "#ff4b4b"}">{d2[1]:+d}</td></tr>'
+                    f'<tr><td>2e</td><td style="color:{"#4caf50" if d1[2]>0 else "#ff4b4b"}">{d1[2]:+d}</td><td style="color:{"#4caf50" if d2[2]>0 else "#ff4b4b"}">{d2[2]:+d}</td></tr>'
+                    f'<tr><td>3e</td><td style="color:{"#4caf50" if d1[3]>0 else "#ff4b4b"}">{d1[3]:+d}</td><td style="color:{"#4caf50" if d2[3]>0 else "#ff4b4b"}">{d2[3]:+d}</td></tr>'
+                    '</table>'
+                )
                 st.markdown(z_html, unsafe_allow_html=True)
                 
             # 3. COMMON OPPONENTS (Triangle)
@@ -2096,16 +2050,16 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                         rows.append(f"<tr><td style='text-align:left; padding-left:10px;'>{opp}</td><td style='color:{color1}; font-weight:bold;'>{res1}</td><td style='color:{color2}; font-weight:bold;'>{res2}</td></tr>")
                     
                     rows_html = "".join(rows)
-                    tbl = f"""
-                    <table style="width:100%; text-align:center; border-collapse: collapse; font-size: 0.9rem;">
-                        <tr style="border-bottom:1px solid #444; color:#888;">
-                            <th style="text-align:left; padding-left:10px;">Adversaire</th>
-                            <th>Résultat {t1}</th>
-                            <th>Résultat {t2}</th>
-                        </tr>
-                        {rows_html}
-                    </table>
-                    """
+                    tbl = (
+                        '<table style="width:100%; text-align:center; border-collapse: collapse; font-size: 0.9rem;">'
+                        '<tr style="border-bottom:1px solid #444; color:#888;">'
+                        '<th style="text-align:left; padding-left:10px;">Adversaire</th>'
+                        f'<th>Résultat {t1}</th>'
+                        f'<th>Résultat {t2}</th>'
+                        '</tr>'
+                        f'{rows_html}'
+                        '</table>'
+                    )
                     st.markdown(tbl, unsafe_allow_html=True)
                 else:
                     st.info("Aucun adversaire commun trouvé pour l'instant.")
@@ -2159,18 +2113,18 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             
             if row_total is not None:
                 # Generate HTML Table for perfect alignment
-                import textwrap
+
                 
                 # Styles
                 table_style = """
                 <style>
                   .trend-table { width: 100%; border-collapse: separate; border-spacing: 0 4px; }
-                  .trend-table th { text-align: center; font-size: 0.85rem; color: #888; font-weight: normal; padding-bottom: 5px; border-bottom: 1px solid #333; }
-                  .trend-table td { text-align: center; padding: 4px 0; font-family: sans-serif; }
-                  .trend-table td.row-label { text-align: left; font-weight: bold; padding-right: 15px; width: 15%; }
-                  .trend-row-total { color: #ffffff; font-weight: 700; font-size: 1.1rem; }
-                  .trend-row-10 { color: #B0B0B0; font-weight: 500; font-size: 1.0rem; }
-                  .trend-row-5 { color: #707070; font-weight: 500; font-size: 1.0rem; }
+                  .trend-table th { text-align: center; font-size: 1.25rem !important; color: #bbb !important; font-weight: normal; padding-bottom: 5px; border-bottom: 1px solid #444; }
+                  .trend-table td { text-align: center; padding: 4px 0; font-family: sans-serif; font-size: 1.4rem !important; }
+                  .trend-table td.row-label { text-align: left; font-weight: bold; padding-right: 15px; width: 15%; font-size: 1.1rem !important; }
+                  .trend-row-total { color: #ffffff; font-weight: 700; font-size: 1.5rem !important; }
+                  .trend-row-10 { color: #B0B0B0; font-weight: 500; font-size: 1.35rem !important; }
+                  .trend-row-5 { color: #707070; font-weight: 500; font-size: 1.35rem !important; }
                 </style>
                 """
                 
@@ -2181,14 +2135,14 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                   <thead>
                     <tr>
                        <th style="text-align: left;">Période</th>
-                       <th>Points</th>
+                       <th>PTS/MJ</th>
                        <th>Fiche</th>
-                       <th>BP</th>
-                       <th>BC</th>
+                       <th>BP/MJ</th>
+                       <th>BC/MJ</th>
                        <th>% AN</th>
                        <th>% DN</th>
-                       <th>PUN/M</th>
-                       <th>FJ</th>
+                       <th>PUN/MJ</th>
+                       <th>FJ/MJ</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2199,17 +2153,22 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                 # Helper to format row
                 def make_html_row(row, label, css_class):
                     pun = round(row['PIM'] / row['GP'], 1) if row['GP'] else 0
+                    pts_pg = round(row['PTS'] / row['GP'], 1) if row['GP'] else 0.0
+                    gf_pg = round(row['GF'] / row['GP'], 1) if row['GP'] else 0.0
+                    ga_pg = round(row['GA'] / row['GP'], 1) if row['GP'] else 0.0
+                    fj_pg = round(row['FJ'] / row['GP'], 1) if row['GP'] else 0.0
+                    
                     return textwrap.dedent(f"""
                     <tr class="{css_class}">
                        <td class="row-label">{label}</td>
-                       <td>{row['PTS']}</td>
+                       <td>{pts_pg}</td>
                        <td>{row['W']}-{row['L']}-{row['T']}</td>
-                       <td>{row['GF']}</td>
-                       <td>{row['GA']}</td>
+                       <td>{gf_pg}</td>
+                       <td>{ga_pg}</td>
                        <td>{row['PP%']}%</td>
                        <td>{row['PK%']}%</td>
                        <td>{pun}</td>
-                       <td>{row['FJ']}</td>
+                       <td>{fj_pg}</td>
                     </tr>
                     """)
 
@@ -2265,45 +2224,86 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
         if len(selected_teams) > 1: st.subheader("Liste des Matchs")
         
         # Add Link
-        # Add Link (HTML)
-        games_filtered['url'] = games_filtered['game_id'].apply(lambda x: f"<a href='https://pdf.play.spordle.com/game/{x}?locale=fr' target='_blank' style='text-decoration:none; color:#4da6ff;'>📄 PDF</a>")
+        # Prepare Data for Interactive Table
+        # We need to keep track of the original teams/game_info for the click event.
+        # But we only want to show specific columns.
         
-        # Add Face-to-Face Shortcut (HTML)
-        # Only if game is not played (score is empty string)
-        import urllib.parse
-        def make_f2f_link_html(row):
-            if row['final_score_home'] == "": # Scheduled
-                # Create URL manually
-                params = {"selected_teams_custom": [row['home'], row['visitor']]}
-                # Encode properly
-                qs = urllib.parse.urlencode(params, doseq=True)
-                url = f"?{qs}"
-                
-                return f'<a href="{url}" target="_parent" style="text-decoration: none; color: #4dabf7; font-weight: bold;">⚔️ Face à Face</a>'
-            return ""
-            
-        games_filtered['VS'] = games_filtered.apply(make_f2f_link_html, axis=1)
+        # 1. Format URL for LinkColumn (Just the URL, not HTML)
+        games_filtered['pdf_url'] = games_filtered['game_id'].apply(lambda x: f"https://pdf.play.spordle.com/game/{x}?locale=fr")
         
-        # Format date
-        games_filtered['Date'] = games_filtered['date_dt'].apply(format_date_fr)
-        
-        # Add VS as first column
-        log_cols = ['VS', 'Date', 'home', 'final_score_home', 'final_score_visitor', 'visitor', 'arena', 'url', 'Alignement']
-        
-        log_display = games_filtered.sort_values(by='date_dt', ascending=False)[log_cols]
-        
-        # Rename for cleaner display
-        log_display = log_display.rename(columns={'url': 'Feuille', 'VS': 'Action'})
+        # 2. Format Date (Standard)
+        games_filtered['Date_fmt'] = games_filtered['date_dt'].apply(format_date_fr)
 
-        styler_log = log_display.style.set_properties(
-            **{'text-align': 'center'}
-        ).set_table_styles([
-            {'selector': 'th', 'props': [('text-align', 'center !important')]},
-            {'selector': 'td', 'props': [('text-align', 'center !important')]}
-        ]).hide(axis='index')
+        # 3. Add Face-à-Face Status Column (First Column)
+        def get_f2f_status(r):
+            if r['final_score_home'] == "" and r['final_score_visitor'] == "":
+                return "à venir"
+            return "" # Empty for completed games ("petites cases")
+            
+        games_filtered['Status_F2F'] = games_filtered.apply(get_f2f_status, axis=1)
         
-        # Render using Helper
-        render_scrollable_table(styler_log, height=500)
+        # 4. Select Display Columns
+        # Order: Status_F2F (Face à Face), date_dt (Actual Date), home, scores...
+        display_cols = ['Status_F2F', 'date_dt', 'home', 'final_score_home', 'final_score_visitor', 'visitor', 'arena', 'pdf_url']
+        
+        # Sort by actual date FIRST, then pick display columns (Preserves Chronological Order)
+        df_display = games_filtered.sort_values(by='date_dt', ascending=False)[display_cols].copy().reset_index(drop=True)
+        
+        # Rename for UI
+        df_display.columns = ['Face à Face', 'Date', 'Domicile', 'Score Dom.', 'Score Vis.', 'Visiteur', 'Aréna', 'Feuille']
+        
+        # interactive Dataframe
+        event = st.dataframe(
+            df_display,
+            column_config={
+                "Feuille": st.column_config.LinkColumn(
+                    "Feuille", display_text="📄 PDF"
+                ),
+                "Score Dom.": st.column_config.TextColumn("Score Dom.", width="small"),
+                "Score Vis.": st.column_config.TextColumn("Score Vis.", width="small"),
+                "Face à Face": st.column_config.TextColumn("Face à Face", width="small"),
+                "Date": st.column_config.DateColumn("Date", format="YYYY-MM-DD", width="small"),
+            },
+            use_container_width=True,
+            hide_index=True,
+            on_select="rerun",
+            selection_mode="single-row"
+        )
+        
+        # --- HANDLE SELECTION ---
+        if event.selection.rows:
+            # Get the selected row index
+            idx = event.selection.rows[0]
+            # Get the actual data from the dataframe (using iloc on the sorted df_display)
+            selected_row = df_display.iloc[idx]
+            
+            # Extract Teams
+            t1 = selected_row['Domicile']
+            t2 = selected_row['Visiteur']
+            
+            # Check if game is played (Optional: Only switch if Scheduled? Or allow for Played too?)
+            # User wants to analyze specific matchup. Let's allow it for ANY game.
+            
+            # Update Session State to Switch View
+            # We use the same logic as the "Sélection Personnalisée" filter
+            
+            # CHECK: Only update and rerun if not already in this state
+            current_teams = st.session_state.get("selected_teams_custom", [])
+            # Current mode from widget selection (or session state if we track it specifically, but widget value is safest source of truth for display)
+            # Use index based check since we are resetting index
+            
+            # Sort lists to ensure order doesn't matter for comparison
+            target_teams = sorted([t1, t2])
+            current_teams_sorted = sorted(current_teams) if current_teams else []
+            
+            # If we are NOT in Custom Mode OR the teams are different -> Trigger update
+            if filter_mode != "Sélection Personnalisée" or current_teams_sorted != target_teams:
+                st.session_state["filter_mode_idx"] = 2 
+                st.session_state["selected_teams_custom"] = [t1, t2]
+                st.session_state["radio_ver"] += 1 # Force widget reset
+                
+                # Force Rerun to apply
+                st.rerun()
 
     # Details (Single Team Only)
     if len(selected_teams) == 1 and tab2 and tab3:
@@ -2322,7 +2322,17 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                 {'selector': 'td', 'props': [('text-align', 'center !important')]}
             ]).hide(axis='index')
             
-            render_scrollable_table(styler_p, height=500)
+            # render_scrollable_table(styler_p, height=500) # Removed
+            st.dataframe(
+                p_display,
+                column_config={
+                    "Date": st.column_config.TextColumn("Date", width="small"),
+                    # Add other specific column configs if necessary
+                },
+                use_container_width=True,
+                hide_index=True,
+                height=500
+            )
             
         with tab3:
              # Resolve Player Names
@@ -2361,7 +2371,19 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                     {'selector': 'td', 'props': [('text-align', 'center !important')]}
                  ]).hide(axis='index')
                  
-                 render_scrollable_table(styler_g, height=500)
+                 # render_scrollable_table(styler_g, height=500)
+                 st.dataframe(
+                      g_display,
+                      column_config={
+                           "Date": st.column_config.TextColumn("Date", width="small"),
+                           "Buteur": st.column_config.TextColumn("Buteur", width="medium"),
+                           "Passeur 1": st.column_config.TextColumn("Passeur 1", width="small"),
+                           "Passeur 2": st.column_config.TextColumn("Passeur 2", width="small"),
+                      },
+                      use_container_width=True,
+                      hide_index=True,
+                      height=500
+                 )
              else:
                  st.info("Aucun but enregistré.")
 

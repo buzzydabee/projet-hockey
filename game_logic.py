@@ -61,31 +61,27 @@ class GameReconstructor:
         
         stats = {
             'pp_g_home': 0, 'pp_att_home': 0,
-            'pp_g_vis': 0, 'pp_att_vis': 0
+            'pp_g_vis': 0, 'pp_att_vis': 0,
+            'per_period': {
+                1: {'pp_g_home': 0, 'pp_att_home': 0, 'pp_g_vis': 0, 'pp_att_vis': 0},
+                2: {'pp_g_home': 0, 'pp_att_home': 0, 'pp_g_vis': 0, 'pp_att_vis': 0},
+                3: {'pp_g_home': 0, 'pp_att_home': 0, 'pp_g_vis': 0, 'pp_att_vis': 0},
+                4: {'pp_g_home': 0, 'pp_att_home': 0, 'pp_g_vis': 0, 'pp_att_vis': 0} # OT
+            }
         }
         
         # Helper to get Opponent ID
         def get_opp(tid): return visitor_id if tid == home_id else home_id
-        
-        # Opp Tracking (To avoid duplicate counting for same overlap)
-        # We count "Power Play Opportunities". 
-        # Definition: A situation where Team A has more players than Team B.
-        # Each distinct continuous interval of advantage is 1 Opp?
-        # OR: Standard logic: Every penalty counts as an opportunity (unless coincidental).
-        # And if 5v3, it counts as 2?
-        # NHL Rule: "Power-play opportunities are the number of times a team has the man advantage."
-        
-        # Let's use the Counting Events method:
-        # When a Minor/Major Penalty starts for Team A:
-        #   If Team B is not already short-handed? Or always +1?
-        #   Usually: Count every penalty call that creates/maintains advantage.
-        #   Exception: Coincidental minors (4v4) do NOT create PP opp.
-        
-        # Simplified logic for prototype:
-        # Count every non-coincidental penalty as an attempt for the opponent.
+
+        # Helper to get Period from time (0-1200=P1, 1200-2400=P2, etc.)
+        def get_period_from_time(t_sec):
+            p = (t_sec // 1200) + 1
+            if p > 3: return 4 # Simple OT handling
+            return p
         
         for e in events:
             curr_time = e['time']
+            p_idx = get_period_from_time(curr_time)
             
             # Cleanup expired
             for tid in [home_id, visitor_id]:
@@ -95,26 +91,22 @@ class GameReconstructor:
                 p_team = e['team_id']
                 opp = get_opp(p_team)
                 
-                # Check for Coincidental? (Penalty on Opp at same time)
-                # Hard with second-resolution.
-                # Heuristic: If Opp has penalty starting within +/- 2 seconds?
-                # Let's ignore coincidental complexity for now to fix the "0 opps" bug.
-                
                 # Add penalty
                 active_penalties[p_team].append(e)
                 
                 # Record Attempt for OPPONENT
-                if opp == home_id: stats['pp_att_home'] += 1
-                else: stats['pp_att_vis'] += 1
+                if opp == home_id: 
+                    stats['pp_att_home'] += 1
+                    if p_idx in stats['per_period']: stats['per_period'][p_idx]['pp_att_home'] += 1
+                else: 
+                    stats['pp_att_vis'] += 1
+                    if p_idx in stats['per_period']: stats['per_period'][p_idx]['pp_att_vis'] += 1
                 
             elif e['type'] == 'GOAL':
                 scoring_team = e['team_id']
                 defending_team = get_opp(scoring_team)
                 
                 # Calculate Strength
-                # Base 5. 
-                # Note: Penalties reduce strength.
-                
                 def_pens = active_penalties[defending_team]
                 att_pens = active_penalties[scoring_team]
                 
@@ -123,8 +115,12 @@ class GameReconstructor:
                 
                 if att_strength > def_strength:
                     # PP GOAL
-                    if scoring_team == home_id: stats['pp_g_home'] += 1
-                    else: stats['pp_g_vis'] += 1
+                    if scoring_team == home_id: 
+                        stats['pp_g_home'] += 1
+                        if p_idx in stats['per_period']: stats['per_period'][p_idx]['pp_g_home'] += 1
+                    else: 
+                        stats['pp_g_vis'] += 1
+                        if p_idx in stats['per_period']: stats['per_period'][p_idx]['pp_g_vis'] += 1
                     
                     # Terminate Minor
                     # Find earliest ending Minor on Defending Team
