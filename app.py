@@ -1336,15 +1336,31 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
     # Helper for other float columns
     for c in cols_display:
          if c not in s_col_config and c not in ['Rang', 'Équipe']:
-              if '/MJ' in c: # Ratio
+              if '/MJ' in c: # Ratio (Normalized)
                    s_col_config[c] = st.column_config.NumberColumn(c, format="%.2f")
               elif '%' in c: # Percent
                    s_col_config[c] = st.column_config.NumberColumn(c, format="%.1f%%")
+              elif normalize and c not in ['MJ', 'Rang', 'Équipe', 'FJ', 'PUN', 'V', 'D', 'N']:
+                   # Conservative Check: If normalized, stick to int for known int columns
+                   s_col_config[c] = st.column_config.NumberColumn(c, format="%d")
               else:
                    s_col_config[c] = st.column_config.NumberColumn(c, format="%d")
     
+    # Styling: Center all columns except Team/Name
+    left_align_cols = ['Équipe', 'Nom', 'Aréna']
+    center_cols = [c for c in cols_display if c not in left_align_cols]
+    
+    
+    styler_standings = standings[cols_display].style.set_properties(
+        subset=center_cols,
+        **{'text-align': 'center'}
+    ).set_table_styles([
+        {'selector': 'th:not(.index_name)', 'props': [('text-align', 'center')]},
+        {'selector': 'td', 'props': [('text-align', 'center')]}
+    ])
+
     st.dataframe(
-        standings[cols_display],
+        styler_standings,
         column_config=s_col_config,
         use_container_width=True,
         hide_index=True
@@ -1434,21 +1450,43 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                 "Nom": st.column_config.TextColumn("Nom", width="medium"),
                 "Équipe": st.column_config.TextColumn("Équipe", width="medium"),
                 "MJ": st.column_config.NumberColumn("MJ", format="%d"),
-                "MA": st.column_config.NumberColumn("MA", format="%.2f" if normalize else "%d"),
-                "V": st.column_config.NumberColumn("V", format="%.2f" if normalize else "%d"),
-                "D": st.column_config.NumberColumn("D", format="%.2f" if normalize else "%d"),
-                "N": st.column_config.NumberColumn("N", format="%.2f" if normalize else "%d"),
-                "BL": st.column_config.NumberColumn("BL", format="%.2f" if normalize else "%d"),
-                "BC": st.column_config.NumberColumn("BC", format="%.2f" if normalize else "%d"),
+                "MA": st.column_config.NumberColumn("MA", format="%d"),
+                "V": st.column_config.NumberColumn("V", format="%d"),
+                "D": st.column_config.NumberColumn("D", format="%d"),
+                "N": st.column_config.NumberColumn("N", format="%d"),
+                "BL": st.column_config.NumberColumn("BL", format="%d"),
+                "BC": st.column_config.NumberColumn("BC", format="%d"),
                 "Moy": st.column_config.NumberColumn("Moy", format="%.2f"),
                 "%Arr": st.column_config.NumberColumn("%Arr", format="%.3f"),
                 "TG_str": st.column_config.TextColumn("TG", width="small"),
             }
             
+            # Additional Helper for Goalies
+            for c in cols_display:
+                if c not in g_col_config:
+                    if '/MJ' in c or 'Moy' in c:
+                        g_col_config[c] = st.column_config.NumberColumn(c, format="%.2f")
+                    elif '%' in c:
+                         g_col_config[c] = st.column_config.NumberColumn(c, format="%.3f" if '%Arr' in c else "%.1f%%")
+                    else:
+                        g_col_config[c] = st.column_config.NumberColumn(c, format="%d")
+            
             # Adjust config for normalized columns if needed (mostly covered above)
             
+            # Styling: Center all columns except Team/Name
+            left_align_cols = ['Équipe', 'Nom', 'Aréna']
+            center_cols_g = [c for c in cols_display if c not in left_align_cols]
+            
+            styler_gdf = gdf[cols_display].style.set_properties(
+                subset=center_cols_g,
+                **{'text-align': 'center'}
+            ).set_table_styles([
+                {'selector': 'th:not(.index_name)', 'props': [('text-align', 'center')]},
+                {'selector': 'td', 'props': [('text-align', 'center')]}
+            ])
+            
             st.dataframe(
-                gdf[cols_display],
+                styler_gdf,
                 column_config=g_col_config,
                 use_container_width=True,
                 hide_index=True
@@ -1598,14 +1636,14 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                 "Nom": st.column_config.TextColumn("Nom", width="medium"),
                 "Équipe": st.column_config.TextColumn("Équipe", width="medium"),
                 "MJ": st.column_config.NumberColumn("MJ", format="%d"),
-                "B": st.column_config.NumberColumn("B", format="%.2f" if normalize else "%d"),
-                "A": st.column_config.NumberColumn("A", format="%.2f" if normalize else "%d"),
-                "PTS": st.column_config.NumberColumn("PTS", format="%.2f" if normalize else "%d"),
+                "B": st.column_config.NumberColumn("B", format="%d"),
+                "A": st.column_config.NumberColumn("A", format="%d"),
+                "PTS": st.column_config.NumberColumn("PTS", format="%d"),
                 "PTS/MJ": st.column_config.NumberColumn("PTS/MJ", format="%.2f"),
-                "PEM": st.column_config.NumberColumn("PEM", format="%.2f" if normalize else "%d"),
-                "PUN": st.column_config.NumberColumn("PUN", format="%.2f" if normalize else "%d"),
-                "PTS_AN": st.column_config.NumberColumn("PTS_AN", format="%.2f" if normalize else "%d"),
-                "PTS_IN": st.column_config.NumberColumn("PTS_IN", format="%.2f" if normalize else "%d"),
+                "PEM": st.column_config.NumberColumn("PEM", format="%d"),
+                "PUN": st.column_config.NumberColumn("PUN", format="%d"),
+                "PTS_AN": st.column_config.NumberColumn("PTS_AN", format="%d"),
+                "PTS_IN": st.column_config.NumberColumn("PTS_IN", format="%d"),
                 # Add others as needed (BAN, BP, etc.)
             }
             
@@ -1613,12 +1651,27 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             for c in cols_display_p:
                  if c not in p_col_config and c not in ['Rang', 'Nom', 'Équipe']:
                       if '/MJ' in c or 'PTS' in c or 'Mo' in c: # Ratio or float
-                           p_col_config[c] = st.column_config.NumberColumn(c, format="%.2f")
+                           if c == 'PTS': # PTS is an integer raw count
+                               p_col_config[c] = st.column_config.NumberColumn(c, format="%d")
+                           else:
+                               p_col_config[c] = st.column_config.NumberColumn(c, format="%.2f")
                       else:
-                           p_col_config[c] = st.column_config.NumberColumn(c, format="%.2f" if normalize else "%d")
+                           p_col_config[c] = st.column_config.NumberColumn(c, format="%d")
+            
+            # Styling: Center all columns except Team/Name
+            left_align_cols = ['Équipe', 'Nom', 'Aréna']
+            center_cols_p = [c for c in cols_display_p if c not in left_align_cols]
+            
+            styler_pdf = p_df[cols_display_p].style.set_properties(
+                subset=center_cols_p,
+                **{'text-align': 'center'}
+            ).set_table_styles([
+                {'selector': 'th:not(.index_name)', 'props': [('text-align', 'center')]},
+                {'selector': 'td', 'props': [('text-align', 'center')]}
+            ])
             
             st.dataframe(
-                p_df[cols_display_p],
+                styler_pdf,
                 column_config=p_col_config,
                 use_container_width=True,
                 hide_index=True
