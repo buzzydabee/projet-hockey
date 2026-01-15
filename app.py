@@ -1,12 +1,16 @@
+
 import streamlit as st
 import os
 import sqlite3
 import pandas as pd
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from game_logic import GameReconstructor
 import streamlit.components.v1 as components
 import textwrap
+import altair as alt
+import google.generativeai as genai
+import json
 
 st.set_page_config(page_title="Hockey Stats Dashboard", layout="wide")
 
@@ -1845,6 +1849,399 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                 
                 return stats
 
+            def get_game_context_snapshot(team1, team2, games_pool, goals_pool):
+                """
+                Builds a rich context snapshot for the matchup.
+                Includes: Triangle Logic (Common Opponents), Recent Form, Shot Volume.
+                """
+                ctx = {
+                    't1': {'name': team1, 'matches': [], 'wins': 0, 'losses': 0, 'shots_for': 0, 'shots_against': 0, 'last_5': []},
+                    't2': {'name': team2, 'matches': [], 'wins': 0, 'losses': 0, 'shots_for': 0, 'shots_against': 0, 'last_5': []},
+                    'h2h': {'t1_wins': 0, 't2_wins': 0, 'ties': 0, 'games': []},
+                    'triangle': {'t1_advantage': 0, 't2_advantage': 0, 'common_opps': []}
+                }
+                
+                # 1. Direct H2H (Face to Face) - Still useful if exists
+                h2h_games = games_pool[((games_pool['home'] == team1) & (games_pool['visitor'] == team2)) | 
+                                       ((games_pool['home'] == team2) & (games_pool['visitor'] == team1))]
+                
+                for _, row in h2h_games.iterrows():
+                    is_t1_home = (row['home'] == team1)
+                    s_t1 = row['final_score_home'] if is_t1_home else row['final_score_visitor']
+                    s_t2 = row['final_score_visitor'] if is_t1_home else row['final_score_home']
+                    
+                    if s_t1 > s_t2: ctx['h2h']['t1_wins'] += 1
+                    elif s_t2 > s_t1: ctx['h2h']['t2_wins'] += 1
+                    else: ctx['h2h']['ties'] += 1
+                    
+                # 2. Triangle Logic (Common Opponents)
+                # Find games for T1 and T2
+                t1_games_all = games_pool[(games_pool['home'] == team1) | (games_pool['visitor'] == team1)]
+                t2_games_all = games_pool[(games_pool['home'] == team2) | (games_pool['visitor'] == team2)]
+                
+                # Extract results: {Opponent: Result(W/L)} (Simplified: Last result counts)
+                def get_results_map(team, g_df):
+                    res_map = {}
+                    for _, r in g_df.sort_values('date_dt').iterrows(): # Sort by date asc, so last update wins
+                        opp = r['visitor'] if r['home'] == team else r['home']
+                        s_us = r['final_score_home'] if r['home'] == team else r['final_score_visitor']
+                        s_them = r['final_score_visitor'] if r['home'] == team else r['final_score_home']
+                        
+                        outcome = 'T'
+                        if s_us > s_them: outcome = 'W'
+                        elif s_us < s_them: outcome = 'L'
+                        
+                        res_map[opp] = outcome
+                    return res_map
+                
+                r1 = get_results_map(team1, t1_games_all)
+                r2 = get_results_map(team2, t2_games_all)
+                
+                # Find Intersection
+                common = set(r1.keys()) & set(r2.keys())
+                ctx['triangle']['common_opps'] = list(common)
+                
+                for opp in common:
+                    res1 = r1[opp]
+                    res2 = r2[opp]
+                    
+                    # T1 Advantage: T1 Beat Opp, T2 Lost to Opp
+                    if res1 == 'W' and res2 == 'L':
+                        ctx['triangle']['t1_advantage'] += 1
+                    # T2 Advantage: T2 Beat Opp, T1 Lost to Opp
+                    elif res2 == 'W' and res1 == 'L':
+                        ctx['triangle']['t2_advantage'] += 1
+                    
+                # 3. Recent Form & Shot Volume (Team 1)
+                t1_games = t1_games_all.sort_values(by='date_dt', ascending=False)
+                # Recent 5
+                for i, (_, row) in enumerate(t1_games.head(5).iterrows()):
+                    is_home = (row['home'] == team1)
+                    res = 'T'
+                    s_us = row['final_score_home'] if is_home else row['final_score_visitor']
+                    s_them = row['final_score_visitor'] if is_home else row['final_score_home']
+                    if s_us > s_them: res = 'W'
+                    elif s_us < s_them: res = 'L'
+                    ctx['t1']['last_5'].append(res)
+                
+                # Global Shots Logic
+                total_shots_for = 0
+                gp = len(t1_games)
+                if gp > 0:
+                    for _, row in t1_games.iterrows():
+                        is_home = (row['home'] == team1)
+                        total_shots_for += row['shots_for_home'] if is_home else row['shots_for_visitor']
+                    ctx['t1']['shots_for_avg'] = total_shots_for / gp
+                else:
+                    ctx['t1']['shots_for_avg'] = 0
+
+                # 4. Recent Form & Shot Volume (Team 2)
+                t2_games = t2_games_all.sort_values(by='date_dt', ascending=False)
+                # Recent 5
+                for i, (_, row) in enumerate(t2_games.head(5).iterrows()):
+                    is_home = (row['home'] == team2)
+                    res = 'T'
+                    s_us = row['final_score_home'] if is_home else row['final_score_visitor']
+                    s_them = row['final_score_visitor'] if is_home else row['final_score_home']
+                    if s_us > s_them: res = 'W'
+                    elif s_us < s_them: res = 'L'
+                    ctx['t2']['last_5'].append(res)
+
+                # Global Shots Logic T2
+                total_shots_for = 0
+                gp = len(t2_games)
+                if gp > 0:
+                    for _, row in t2_games.iterrows():
+                        is_home = (row['home'] == team2)
+                        total_shots_for += row['shots_for_home'] if is_home else row['shots_for_visitor']
+                    ctx['t2']['shots_for_avg'] = total_shots_for / gp
+                else:
+                    ctx['t2']['shots_for_avg'] = 0
+                    
+                return ctx
+
+
+            def generate_game_plan_ai(s1, s2, p1_stats, p2_stats, snapshot, api_key, model_name='gemini-1.5-flash'):
+                """Generates game plan using Google Gemini AI."""
+                try:
+                    genai.configure(api_key=api_key)
+                    model = genai.GenerativeModel(model_name)
+                    
+                    # Construct Context Prompt with FULL STATS
+                    prompt = f"""
+                    Agis comme un coach de hockey expert (Niveau LHJMQ/M18AAA). Analyse TOUTES les données suivantes pour deux équipes et génère un rapport complet.
+                    
+                    **Contexte :**
+                    - Équipe Notre (Us): {s1.get('Team', 'Us')}
+                    - Adversaire (Them): {s2.get('Team', 'Them')}
+                    
+                    **Données Brutes (JSON Style) :**
+                    - Stats Saison Us (S1): {s1.astype(str).to_dict() if hasattr(s1, 'to_dict') else s1}
+                    - Stats Saison Them (S2): {s2.astype(str).to_dict() if hasattr(s2, 'to_dict') else s2}
+                    
+                    **Analyse Avancée (Snapshot):**
+                    - Triangle (Adversaires Communs): Avantage Us (+{snapshot['triangle'].get('t1_advantage',0)}) vs Avantage Them (+{snapshot['triangle'].get('t2_advantage',0)})
+                    - Volume de Tirs (Us): {snapshot['t1'].get('shots_for_avg', 0):.1f} tirs/match
+                    - Récents Matchs (Them): {', '.join(snapshot['t2'].get('last_5', []))}
+                    
+                    **Stats par Période (Us - Them):**
+                    - P1: GF {p1_stats[1]['GF_avg']:.2f}-{p2_stats[1]['GF_avg']:.2f}, GA {p1_stats[1]['GA_avg']:.2f}-{p2_stats[1]['GA_avg']:.2f}
+                    - P2: GF {p1_stats[2]['GF_avg']:.2f}-{p2_stats[2]['GF_avg']:.2f}, GA {p1_stats[2]['GA_avg']:.2f}-{p2_stats[2]['GA_avg']:.2f}, PIM {p1_stats[2]['PIM_avg']:.1f}-{p2_stats[2]['PIM_avg']:.1f}
+                    - P3: GF {p1_stats[3]['GF_avg']:.2f}-{p2_stats[3]['GF_avg']:.2f}, GA {p1_stats[3]['GA_avg']:.2f}-{p2_stats[3]['GA_avg']:.2f}
+                    
+                    **Tache :**
+                    Génère un objet JSON stricte avec 4 clés ("global", "1", "2", "3").
+                    
+                    1. "global": Une analyse générale du match.
+                       - "title": Titre du plan de match (ex: "Le Choc des Titans", "Match Piège").
+                       - "icon": Emoji représentatif.
+                       - "text": Résumé de la dynamique du match en 2-3 phrases. Qui est favori ? Quelle sera la clé (Discipline, Gardiens, Vitesse) ?
+                       - "prediction": Courte prédiction (ex: "Victoire serrée 4-3").
+
+                    2. "1", "2", "3" (Périodes):
+                       - "title": Titre court.
+                       - "color": "green", "red", "blue", "orange".
+                       - "icon": Emoji.
+                       - "text": Conseil tactique précis.
+                    
+                    **Format de Sortie (JSON Uniquement) :**
+                    {{
+                        "global": {{"title": "...", "icon": "...", "text": "...", "prediction": "..."}},
+                        "1": {{"title": "...", "color": "...", "icon": "...", "text": "..."}},
+                        "2": {{"title": "...", "color": "...", "icon": "...", "text": "..."}},
+                        "3": {{"title": "...", "color": "...", "icon": "...", "text": "..."}}
+                    }}
+                    """
+                    
+                    response = model.generate_content(prompt)
+                    txt = response.text.replace('```json', '').replace('```', '').strip()
+                    return json.loads(txt)
+                except Exception as e:
+                    st.error(f"Erreur IA : {e}")
+                    return None
+
+            def generate_game_plan(s1, s2, p1_stats, p2_stats, snapshot=None):
+                """Generates rich narrative cards for P1, P2, P3 based on detailed complex stats analysis."""
+                plan = {}
+                
+                # --- Unpack Snapshot if available ---
+                # Defaults
+                t1_shots_for = 0
+                tri_adv_t1 = 0
+                tri_adv_t2 = 0
+                t2_recent_losses = 0
+                
+                if snapshot:
+                    t1_shots_for = snapshot['t1'].get('shots_for_avg', 0)
+                    
+                    # Triangle Logic
+                    tri_adv_t1 = snapshot['triangle'].get('t1_advantage', 0)
+                    tri_adv_t2 = snapshot['triangle'].get('t2_advantage', 0)
+                    
+                    # Recent Form Analysis
+                    last5_t2 = snapshot['t2'].get('last_5', [])
+                    for r in last5_t2:
+                        if r == 'L': t2_recent_losses += 1
+                        else: break
+
+                # --- Global Context ---
+                us_gf = p1_stats[1]['GF_avg']
+                them_gf = p2_stats[1]['GF_avg']
+                them_ga = p2_stats[1]['GA_avg']
+                us_pim_total = sum(p1_stats[p]['PIM_avg'] for p in [1,2,3])
+                
+                # --- P1: L'ENTAME ---
+                
+                # [NEW] Complex Scenario: The Bogey Team (Triangle Logic - Indirect Superiority)
+                # If T2 has significantly better performance vs common opponents (e.g. +2 adv)
+                if snapshot and tri_adv_t2 >= (tri_adv_t1 + 2):
+                     plan[1] = {
+                        'title': "P1 : Déjouer les Pronostics 🎱",
+                        'color': 'red',
+                        'icon': "🔮",
+                        'text': f"**L'Outsider.** Ils ont battu {tri_adv_t2} équipes contre lesquelles vous avez perdu. <br>👉 *Stratégie :* Jouez sans complexe. Les mathématiques sont contre vous, alors changez l'équation."
+                    }
+                elif snapshot and tri_adv_t1 >= (tri_adv_t2 + 2):
+                     plan[1] = {
+                        'title': "P1 : Confiance Logique 🧠",
+                        'color': 'green',
+                        'icon': "📈",
+                        'text': f"**L'Avantage Comparatif.** Vous battez régulièrement les équipes qui les battent (+{tri_adv_t1}). <br>👉 *Stratégie :* Imposez votre hiérarchie dès la mise au jeu initiale."
+                    }
+                # [NEW] Complex Scenario: The Shooting Gallery
+                elif snapshot and t1_shots_for > 25.0 and us_gf < 0.8: 
+                     plan[1] = {
+                        'title': "P1 : Galerie de Tir 🎯",
+                        'color': 'blue',
+                        'icon': "🏒",
+                        'text': f"**Manque de Finition.** Vous lancez beaucoup ({t1_shots_for:.1f}/m) mais ça ne rentre pas. <br>👉 *Stratégie :* Arrêtez de viser les lucarnes. Visez les jambières pour des retours. Trafic obligatoire."
+                    }
+                # [NEW] Complex Scenario: Cold Streak
+                elif snapshot and t2_recent_losses >= 3:
+                     plan[1] = {
+                        'title': "P1 : Confiance Brisée 💔",
+                        'color': 'green',
+                        'icon': "📉",
+                        'text': f"**Opposant Fragile.** Ils viennent de perdre {t2_recent_losses} matchs de suite. <br>👉 *Stratégie :* Marquez dans les 5 premières minutes. Ils vont s'effondrer mentalement."
+                    }
+
+                # Standard Scenarios
+                elif them_gf < 0.8 and them_ga < 0.8 and us_pim_total > 8.0:
+                    plan[1] = {
+                            'title': "P1 : Le Piège 🕸️",
+                            'color': 'red',
+                            'icon': "🪤",
+                            'text': f"**Ne tombez pas dans le panneau.** Ils jouent la tortue (BP: {them_gf:.1f}) pour vous frustrer. <br>👉 *Stratégie :* Aucun risque inutile. Discipline monacale requise."
+                        }
+                elif them_gf > 1.8 and them_ga > 1.8:
+                    plan[1] = {
+                        'title': "P1 : Canon de Verre 💥",
+                        'color': 'orange',
+                        'icon': "🔫",
+                        'text': f"**Tout pour l'attaque.** Ils marquent beaucoup ({them_gf:.1f}) mais c'est une passoire derrière. <br>👉 *Stratégie :* Shootout mode. Saturez l'enclave, ça va rentrer."
+                    }
+                elif (p1_stats[1]['GF_avg'] > 1.25) and them_ga > 1.25:
+                    plan[1] = {
+                        'title': "P1 : Départ Canon 🚀", 
+                        'color': 'green', 
+                        'icon': "⚡",
+                        'text': f"**Blitzkrieg.** Vous marquez beaucoup en 1re et ils sont fragiles. <br>👉 *Stratégie :* Forecheck agressif dès la première seconde."
+                    }
+                else:
+                    plan[1] = {
+                        'title': "P1 : Mise en Place ♟️", 
+                        'color': 'blue', 
+                        'icon': "⏱️",
+                        'text': f"**Jeu Équilibré.** Stats similaires en début de match. <br>👉 *Stratégie :* Le premier but dictera le ton pour le reste du match."
+                    }
+
+
+                # --- P2: LE CHANGEMENT (The Grind) ---
+                us_pim = p1_stats[2]['PIM_avg']
+                them_pim = p2_stats[2]['PIM_avg']
+                them_ga_p2 = p2_stats[2]['GA_avg']
+                us_pp_perc = s1.get('%AN', 0) if s1 is not None else 0
+                
+                # Complex Scenario: Bully Victim (High PIM Opp + High PP Us)
+                if them_pim > 5.0 and us_pp_perc > 20.0:
+                     plan[2] = {
+                        'title': "P2 : Revanche Glacée ❄️", 
+                        'color': 'green', 
+                        'icon': "⚖️",
+                        'text': f"**Punissez les Brutes.** Ils sont indisciplinés ({them_pim:.1f} PIM) et votre AN est performant. <br>👉 *Stratégie :* Provoquez les fautes, ne répondez pas aux coups. Faites-les payer au tableau d'affichage."
+                    }
+                elif them_pim > 4.0:
+                     plan[2] = {
+                        'title': "P2 : Guerre des Nerfs 🤬", 
+                        'color': 'green', 
+                        'icon': "👮",
+                        'text': f"**Provoquez-les.** C'est leur période la plus indisciplinée ({them_pim:.1f} PIM). <br>👉 *Stratégie :* Mettez du trafic devant le filet et faites-les disjoncter. Le match se gagne en Power Play ici."
+                    }
+                elif us_pim > 4.0:
+                    plan[2] = {
+                        'title': "P2 : Discipline de Fer ⛓️", 
+                        'color': 'red', 
+                        'icon': "🤐",
+                        'text': f"**Danger Punitions.** C'est votre talon d'Achille ({us_pim:.1f} PIM). <br>👉 *Stratégie :* Patinez au lieu d'accrocher. Le long changement rend les désavantages numériques épuisants."
+                    }
+                elif (us_pim + them_pim) > 6.0:
+                     plan[2] = {
+                        'title': "P2 : Unités Spéciales ⚖️",
+                        'color': 'orange',
+                        'icon': "👮",
+                        'text': f"**Bataille d'AN/DN.** Le match va se jouer à 4 contre 5 (Total PIM: {us_pim+them_pim:.0f}). <br>👉 *Stratégie :* Soyez disciplinés. Provoquez les fautes. Vos unités spéciales doivent faire la différence."
+                    }
+                elif them_ga_p2 < 0.5:
+                    plan[2] = {
+                        'title': "P2 : Le Mur 🧱",
+                        'color': 'red',
+                        'icon': "🛑",
+                        'text': f"**Hermétique.** Ils ne donnent rien en 2e ({them_ga_p2:.1f} BC). <br>👉 *Stratégie :* Oubliez les beaux jeux. Il faudra un but 'sale' : trafic, déviations, retours de lancer."
+                    }
+                elif them_ga_p2 > 1.5:
+                    plan[2] = {
+                        'title': "P2 : Le Ventre Mou 🦈", 
+                        'color': 'green', 
+                        'icon': "🎯",
+                        'text': f"**Opportunité.** Ils encaissent énormément en période médiane ({them_ga_p2:.1f} BC). <br>👉 *Stratégie :* Étirez le jeu et profitez de la fatigue causée par le long changement pour les piéger."
+                    }
+                elif (p1_stats[2]['GF_avg'] + them_ga_p2) > 3.5:
+                    plan[2] = {
+                        'title': "P2 : Portes Ouvertes 🎪", 
+                        'color': 'orange', 
+                        'icon': "🥅",
+                        'text': "**Festival Offensif.** Les stats prédisent beaucoup de buts ici.<br>👉 *Stratégie :* Si vous menez, verrouillez. Si vous perdez, c'est le moment de tout lâcher en attaque."
+                    }
+                else:
+                    plan[2] = {
+                        'title': "P2 : Bataille de Tranchées 🛡️", 
+                        'color': 'blue', 
+                        'icon': "⚔️",
+                        'text': f"**Défense Serrée.** Peu d'ouverture probable (PIM: {them_pim:.1f}, BC: {them_ga_p2:.1f}). <br>👉 *Stratégie :* Les changements de lignes seront cruciaux. Ne restez pas coincés trop longtemps."
+                    }
+
+                # --- P3: LA FINITION (The Close) ---
+                us_ga_p3 = p1_stats[3]['GA_avg']
+                them_gf_p3 = p2_stats[3]['GF_avg']
+                them_ga_p3 = p2_stats[3]['GA_avg']
+                them_pp = s2['%AN'] if '%AN' in s2 else (s2['%AN (Rec)'] if '%AN (Rec)' in s2 else 0)
+                diff_clutch = (p1_stats[3]['GF_avg'] - p1_stats[3]['GA_avg']) - (p2_stats[3]['GF_avg'] - p2_stats[3]['GA_avg'])
+                
+                # Complex Scenario: Turtle Mode
+                if them_ga_p3 < 0.6 and them_gf_p3 < 0.6:
+                     plan[3] = {
+                        'title': "P3 : La Tortue 🐢", 
+                        'color': 'orange', 
+                        'icon': "🔒",
+                        'text': f"**Casser la Coquille.** Ils ferment le jeu en 3e (Total Buts ~{them_ga_p3+them_gf_p3:.1f}). <br>👉 *Stratégie :* Dump and Chase obligatoire. Échec avant agressif pour forcer l'erreur."
+                    }
+                elif us_ga_p3 > 1.35:
+                    plan[3] = {
+                        'title': "P3 : Zone de Danger ⚠️", 
+                        'color': 'red', 
+                        'icon': "🧱",
+                        'text': f"**Risque d'Effondrement.** Vous accordez trop de buts en fin de match ({us_ga_p3:.1f}). <br>👉 *Stratégie :* Simplifiez la sortie de zone. Pas de passes risquées dans l'axe. Jouez la montre."
+                    }
+                elif us_ga_p3 > 2.0:
+                     plan[3] = {
+                        'title': "P3 : Sauvés par le Gong 🔔",
+                        'color': 'red',
+                        'icon': "🆘",
+                        'text': f"**Fin de Match Fragile.** Vous encaissez trop en fin de match ({us_ga_p3:.1f} BC). <br>👉 *Stratégie :* Si vous menez, ne reculez pas. Jouez dans LEUR zone pour écouler le temps."
+                    }
+                elif them_ga_p3 > 1.4:
+                    plan[3] = {
+                        'title': "P3 : L'Estocade 🗡️", 
+                        'color': 'green', 
+                        'icon': "🩸",
+                        'text': f"**Ils craquent.** L'adversaire s'écroule souvent en 3e ({them_ga_p3:.1f} BC). <br>👉 *Stratégie :* Même si le score est serré, continuez à pousser. Ils vont finir par faire une erreur fatale."
+                    }
+                elif them_pp > 25.0 and p1_stats[3]['PIM_avg'] > 2.0:
+                    plan[3] = {
+                        'title': "P3 : Discipline Mortelle ☠️", 
+                        'color': 'red', 
+                        'icon': "🚫",
+                        'text': f"**Alerte Spéciale.** Leur Power Play est létal ({them_pp:.0f}%) et vous prenez des pénalités tardives. <br>👉 *Stratégie :* Aucune punition en zone offensive. Bâton sur la glace."
+                    }
+                elif diff_clutch > 0.5:
+                    plan[3] = {
+                        'title': "P3 : Avantage Physique 💪", 
+                        'color': 'green', 
+                        'icon': "🔋",
+                        'text': "**Finisseurs.** Vous finissez vos matchs beaucoup plus fort qu'eux. <br>👉 *Stratégie :* Imposez votre rythme. Plus le match avance, plus vous avez l'avantage."
+                    }
+                else:
+                    plan[3] = {
+                        'title': "P3 : Money Time 💰", 
+                        'color': 'blue', 
+                        'icon': "🧊",
+                        'text': f"**Tout se joue maintenant.** Stats équilibrées en fin de match ({them_ga_p3:.1f} BC). <br>👉 *Stratégie :* Sang-froid absolu. Le travail fera la différence."
+                    }
+                    
+                return plan
+
+
+
             if s1 is not None and s2 is not None:
                  # 1. TALE OF THE TAPE (Choc des Forces)
                  st.subheader("🥊 Choc des Forces")
@@ -1881,6 +2278,11 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                          b = int(255 + (75 - 255) * ratio)
                          
                      return f"rgb({r}, {g}, {b})"
+
+                 # --- NARRATIVE / GAME PLAN GENERATOR ---
+                 # --- NARRATIVE / GAME PLAN GENERATOR ---
+
+
 
                  # HTML Component for Metric + MiniTable
                  def render_stat_card(label, val_main, delta, p_data, p_data_opp, key_suffix, is_inverse=False, is_perc=False, val_fmt="{:.2f}", show_table=True):
@@ -2020,6 +2422,75 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                      st.markdown(render_stat_card("", f"{pk_v2}%", -pk_d, p_stats2, p_stats1, 'PK%', is_perc=True, show_table=True), unsafe_allow_html=True)
                  with r2_cols[5]:
                      st.markdown(render_stat_card("", pim_v2, -pim_d, p_stats2, p_stats1, 'PIM_avg', is_inverse=True), unsafe_allow_html=True)
+            
+            st.divider()
+
+            # --- GAME PLAN SECTION ---
+            st.subheader("📋 Plan de Match & Clés du Succès")
+            
+            # --- AI TOGGLE ---
+            ai_mode = st.sidebar.toggle("🤖 Mode IA Générative (Gemini)", value=False)
+            api_key = None
+            if ai_mode:
+                # Try to get from secrets first
+                try:
+                    if "GEMINI_API_KEY" in st.secrets:
+                        api_key = st.secrets["GEMINI_API_KEY"]
+                except (FileNotFoundError, Exception):
+                    # Secrets file doesn't exist or other error, fallback to manual input
+                    pass
+                
+                if not api_key:
+                    api_key = st.sidebar.text_input("Clé API Gemini", type="password")
+                
+                # Model Selection
+                model_name = st.sidebar.radio("Modèle", ["gemini-1.5-flash", "gemini-1.5-pro"], index=0, help="Flash est plus rapide, Pro est plus intelligent.")
+            
+            # --- NEW: Get Context Snapshot ---
+            snapshot = get_game_context_snapshot(t1, t2, games, goals)
+            
+            plan = {}
+            if ai_mode and api_key:
+                with st.spinner(f"L'IA ({model_name}) analyse le match..."):
+                    plan = generate_game_plan_ai(s1, s2, p_stats1, p_stats2, snapshot, api_key, model_name)
+            
+            # Fallback (or if AI not active/failed)
+            if not plan:
+                 plan = generate_game_plan(s1, s2, p_stats1, p_stats2, snapshot)
+
+            # --- RENDER GLOBAL AI CARD ---
+            if 'global' in plan:
+                g = plan['global']
+                st.markdown(f"""
+                <div style="background-color: #2c2f38; border-left: 5px solid #00A8E8; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
+                    <div style="font-size: 1.2rem; font-weight: bold; color: #fff; display: flex; align-items: center;">
+                        <span style="font-size: 1.5rem; margin-right: 10px;">{g.get('icon', '🧠')}</span> {g.get('title', 'Analyse Globale')}
+                    </div>
+                    <div style="margin-top: 10px; font-size: 1rem; color: #ddd;">{g.get('text', '')}</div>
+                    <div style="margin-top: 10px; font-size: 0.9rem; color: #00A8E8; font-weight: bold;">🔮 {g.get('prediction', '')}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            c_p1, c_p2, c_p3 = st.columns(3)
+            
+            def render_plan_card(period_id):
+                if period_id not in plan: return ""
+                item = plan[period_id]
+                color_map = {'green': '#1f4025', 'red': '#521d1d', 'blue': '#1a2e40', 'orange': '#5c3a00'}
+                bg = color_map.get(item['color'], '#1a2e40')
+                
+                return f"""
+                <div style="background-color: {bg}; border-radius: 8px; padding: 15px; border: 1px solid #444; height: 100%;">
+                   <div style="font-weight: bold; font-size: 1.1rem; margin-bottom: 8px;">{item['icon']} {item['title']}</div>
+                   <div style="font-size: 0.95rem; line-height: 1.4;">{item['text']}</div>
+                </div>
+                """
+
+            with c_p1: st.markdown(render_plan_card(1), unsafe_allow_html=True)
+            with c_p2: st.markdown(render_plan_card(2), unsafe_allow_html=True)
+            with c_p3: st.markdown(render_plan_card(3), unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
             
             st.divider()
             
