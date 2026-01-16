@@ -15,3 +15,7 @@ venv.bak/
 downloads/
 # hockey_stats.db (Uncommented for Cloud Deployment)
 *.log
+
+# Streamlit
+.streamlit/
+secrets.toml

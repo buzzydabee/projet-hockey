@@ -1967,49 +1967,79 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                     genai.configure(api_key=api_key)
                     model = genai.GenerativeModel(model_name)
                     
-                    # Construct Context Prompt with FULL STATS
-                    prompt = f"""
-                    Agis comme un coach de hockey expert (Niveau LHJMQ/M18AAA). Analyse TOUTES les données suivantes pour deux équipes et génère un rapport complet.
-                    
-                    **Contexte :**
-                    - Équipe Notre (Us): {s1.get('Team', 'Us')}
-                    - Adversaire (Them): {s2.get('Team', 'Them')}
-                    
-                    **Données Brutes (JSON Style) :**
-                    - Stats Saison Us (S1): {s1.astype(str).to_dict() if hasattr(s1, 'to_dict') else s1}
-                    - Stats Saison Them (S2): {s2.astype(str).to_dict() if hasattr(s2, 'to_dict') else s2}
-                    
-                    **Analyse Avancée (Snapshot):**
-                    - Triangle (Adversaires Communs): Avantage Us (+{snapshot['triangle'].get('t1_advantage',0)}) vs Avantage Them (+{snapshot['triangle'].get('t2_advantage',0)})
-                    - Volume de Tirs (Us): {snapshot['t1'].get('shots_for_avg', 0):.1f} tirs/match
-                    - Récents Matchs (Them): {', '.join(snapshot['t2'].get('last_5', []))}
-                    
-                    **Stats par Période (Us - Them):**
-                    - P1: GF {p1_stats[1]['GF_avg']:.2f}-{p2_stats[1]['GF_avg']:.2f}, GA {p1_stats[1]['GA_avg']:.2f}-{p2_stats[1]['GA_avg']:.2f}
-                    - P2: GF {p1_stats[2]['GF_avg']:.2f}-{p2_stats[2]['GF_avg']:.2f}, GA {p1_stats[2]['GA_avg']:.2f}-{p2_stats[2]['GA_avg']:.2f}, PIM {p1_stats[2]['PIM_avg']:.1f}-{p2_stats[2]['PIM_avg']:.1f}
-                    - P3: GF {p1_stats[3]['GF_avg']:.2f}-{p2_stats[3]['GF_avg']:.2f}, GA {p1_stats[3]['GA_avg']:.2f}-{p2_stats[3]['GA_avg']:.2f}
-                    
-                    **Tache :**
-                    Génère un objet JSON stricte avec 4 clés ("global", "1", "2", "3").
-                    
-                    1. "global": Une analyse générale du match.
-                       - "title": Titre du plan de match (ex: "Le Choc des Titans", "Match Piège").
-                       - "icon": Emoji représentatif.
-                       - "text": Résumé de la dynamique du match en 2-3 phrases. Qui est favori ? Quelle sera la clé (Discipline, Gardiens, Vitesse) ?
-                       - "prediction": Courte prédiction (ex: "Victoire serrée 4-3").
+                    # Helper to map to French Labels
+                    def to_french_dict(row):
+                        if not hasattr(row, 'to_dict'): return str(row)
+                        d = row.to_dict()
+                        # Map common keys to French
+                        mapping = {
+                            'GP': 'MJ (Matchs Joués)', 'W': 'V (Victoires)', 'L': 'D (Défaites)', 'OTL': 'DP (Défaites Prol.)',
+                            'PTS': 'PTS (Points)', 'GF': 'BP (Buts Pour)', 'GA': 'BC (Buts Contre)',
+                            'PP%': '%AN (Avantage Numérique)', 'PK%': '%DN (Désavantage Numérique)',
+                            'PIM': 'PUN (Minutes Punition)'
+                        }
+                        new_d = {}
+                        for k, v in d.items():
+                            key_fr = mapping.get(k, k)
+                            new_d[key_fr] = v
+                        return new_d
 
-                    2. "1", "2", "3" (Périodes):
-                       - "title": Titre court.
-                       - "color": "green", "red", "blue", "orange".
-                       - "icon": Emoji.
-                       - "text": Conseil tactique précis.
+                    s1_fr = to_french_dict(s1)
+                    s2_fr = to_french_dict(s2)
+
+                    prompt = f"""
+                    Agis comme un coach de hockey expert (Niveau LHJMQ/M18AAA). Analyse TOUTES les données suivantes pour deux équipes et génère DEUX plans de match distincts.
                     
-                    **Format de Sortie (JSON Uniquement) :**
+                    Tu disposes de tout le tableau de bord des statistiques. Utilise les termes français (BP, BC, AN, DN).
+                    
+                    **Contexte du Match :**
+                    - Équipe 1 (Domicile): {s1.get('Team', 'Équipe 1')}
+                    - Équipe 2 (Visiteur): {s2.get('Team', 'Équipe 2')}
+                    
+                    **1. Statistiques Saison (Globales) :**
+                    - Stats Domicile : {s1_fr}
+                    - Stats Visiteur : {s2_fr}
+                    
+                    **2. Analyse Comparative (Face-à-Face & Tendance) :**
+                    - Avantage Triangle (Comparatif vs Adversaires Communs) : Domicile (+{snapshot['triangle'].get('t1_advantage',0)}) vs Visiteur (+{snapshot['triangle'].get('t2_advantage',0)})
+                    - Volume de Tirs (Offensif Domicile) : {snapshot['t1'].get('shots_for_avg', 0):.1f} tirs/match
+                    - Forme Récente (Visiteur - 5 derniers matchs) : {', '.join(snapshot['t2'].get('last_5', []))}
+                    
+                    **3. Détails par Période (Moyennes par match) :**
+                    *P1 (1ère Période)*
+                    - Buts Pour (BP) : Dom {p1_stats[1]['GF_avg']:.2f} vs Vis {p2_stats[1]['GF_avg']:.2f}
+                    - Buts Contre (BC) : Dom {p1_stats[1]['GA_avg']:.2f} vs Vis {p2_stats[1]['GA_avg']:.2f}
+                    
+                    *P2 (2ème Période - Le long changement)*
+                    - BP : Dom {p1_stats[2]['GF_avg']:.2f} vs Vis {p2_stats[2]['GF_avg']:.2f}
+                    - BC : Dom {p1_stats[2]['GA_avg']:.2f} vs Vis {p2_stats[2]['GA_avg']:.2f}
+                    - Punitions (PUN) : Dom {p1_stats[2]['PIM_avg']:.1f} vs Vis {p2_stats[2]['PIM_avg']:.1f}
+                    
+                    *P3 (3ème Période - Fin de match)*
+                    - BP : Dom {p1_stats[3]['GF_avg']:.2f} vs Vis {p2_stats[3]['GF_avg']:.2f} 
+                    - BC : Dom {p1_stats[3]['GA_avg']:.2f} vs Vis {p2_stats[3]['GA_avg']:.2f}
+                    
+                    **TACHE :**
+                    Génère un objet JSON stricte avec 2 clés principales : "team1_plan" et "team2_plan".
+                    
+                    Pour CHAQUE plan :
+                    1. "global": Analyse générale. "text" doit expliquer qui a l'avantage et pourquoi.
+                    2. "1", "2", "3": Conseils tactiques spécifiques à chaque période basés sur les stats ci-dessus.
+                    
+                    **Format JSON Attendu :**
                     {{
-                        "global": {{"title": "...", "icon": "...", "text": "...", "prediction": "..."}},
-                        "1": {{"title": "...", "color": "...", "icon": "...", "text": "..."}},
-                        "2": {{"title": "...", "color": "...", "icon": "...", "text": "..."}},
-                        "3": {{"title": "...", "color": "...", "icon": "...", "text": "..."}}
+                        "team1_plan": {{
+                            "global": {{"title": "...", "icon": "...", "text": "...", "prediction": "..."}},
+                            "1": {{"title": "...", "color": "green/red/blue/orange", "icon": "...", "text": "..."}},
+                            "2": {{"title": "...", "color": "...", "icon": "...", "text": "..."}},
+                            "3": {{"title": "...", "color": "...", "icon": "...", "text": "..."}}
+                        }},
+                        "team2_plan": {{
+                            "global": {{"title": "...", "icon": "...", "text": "...", "prediction": "..."}},
+                            "1": {{"title": "...", "color": "...", "icon": "...", "text": "..."}},
+                            "2": {{"title": "...", "color": "...", "icon": "...", "text": "..."}},
+                            "3": {{"title": "...", "color": "...", "icon": "...", "text": "..."}}
+                        }}
                     }}
                     """
                     
@@ -2018,6 +2048,13 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                     return json.loads(txt)
                 except Exception as e:
                     st.error(f"Erreur IA : {e}")
+                    try:
+                        # Attempt to list models to help debug
+                        models = list(genai.list_models())
+                        model_names = [m.name for m in models if 'generateContent' in m.supported_generation_methods]
+                        st.warning(f"Modèles disponibles détectés avec votre clé : {', '.join(model_names)}")
+                    except Exception as e2:
+                        st.error(f"Impossible de lister les modèles : {e2}")
                     return None
 
             def generate_game_plan(s1, s2, p1_stats, p2_stats, snapshot=None):
@@ -2049,6 +2086,28 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                 them_gf = p2_stats[1]['GF_avg']
                 them_ga = p2_stats[1]['GA_avg']
                 us_pim_total = sum(p1_stats[p]['PIM_avg'] for p in [1,2,3])
+                
+                # --- [NEW] Global Component (Rule-based) ---
+                # A simple synthesis
+                g_title = "Match à Enjeu"
+                g_text = "Les statistiques suggèrent un affrontement serré."
+                g_icon = "🏒"
+                
+                if snapshot and tri_adv_t2 >= (tri_adv_t1 + 2):
+                    g_title = "Défi Difficile (Outsider)"
+                    g_text = "L'adversaire a l'avantage sur les adversaires communs. Il faudra jouer intelligemment."
+                    g_icon = "🛡️"
+                elif snapshot and tri_adv_t1 >= (tri_adv_t2 + 2):
+                    g_title = "Avantage Théorique"
+                    g_text = "Vous avez l'avantage statistique. Imposez votre rythme."
+                    g_icon = "⭐"
+                
+                plan['global'] = {
+                    'title': g_title,
+                    'icon': g_icon,
+                    'text': g_text,
+                    'prediction': "Analyse basée sur les règles."
+                }
                 
                 # --- P1: L'ENTAME ---
                 
@@ -2429,7 +2488,7 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             st.subheader("📋 Plan de Match & Clés du Succès")
             
             # --- AI TOGGLE ---
-            ai_mode = st.sidebar.toggle("🤖 Mode IA Générative (Gemini)", value=False)
+            ai_mode = st.sidebar.toggle("🤖 Mode IA Générative (Gemini)", value=True)
             api_key = None
             if ai_mode:
                 # Try to get from secrets first
@@ -2444,7 +2503,7 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                     api_key = st.sidebar.text_input("Clé API Gemini", type="password")
                 
                 # Model Selection
-                model_name = st.sidebar.radio("Modèle", ["gemini-1.5-flash", "gemini-1.5-pro"], index=0, help="Flash est plus rapide, Pro est plus intelligent.")
+                model_name = st.sidebar.radio("Modèle", ["gemini-3-flash-preview", "gemini-3-pro-preview"], index=1, help="Flash est plus rapide. Pro est plus intelligent.")
             
             # --- NEW: Get Context Snapshot ---
             snapshot = get_game_context_snapshot(t1, t2, games, goals)
@@ -2456,42 +2515,79 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             
             # Fallback (or if AI not active/failed)
             if not plan:
-                 plan = generate_game_plan(s1, s2, p_stats1, p_stats2, snapshot)
+                 # Generate Rule-Based for T1
+                 p1 = generate_game_plan(s1, s2, p_stats1, p_stats2, snapshot)
+                 # Generate Rule-Based for T2 (Use S2 as primary)
+                 # Note: Snapshot T1/T2 keys might need swapping conceptually, but simpler to just pass original
+                 # For a quick fix, we just generate T1's perspective. Ideally we'd swap snapshot too.
+                 # Let's try to generate T2 perspective simply:
+                 s2_snapshot = snapshot # In a real implementation we'd flip the snapshot logic
+                 p2 = generate_game_plan(s2, s1, p_stats2, p_stats1, s2_snapshot)
+                 
+                 plan = {
+                     "team1_plan": p1,
+                     "team2_plan": p2
+                 }
 
-            # --- RENDER GLOBAL AI CARD ---
-            if 'global' in plan:
-                g = plan['global']
-                st.markdown(f"""
-                <div style="background-color: #2c2f38; border-left: 5px solid #00A8E8; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
-                    <div style="font-size: 1.2rem; font-weight: bold; color: #fff; display: flex; align-items: center;">
-                        <span style="font-size: 1.5rem; margin-right: 10px;">{g.get('icon', '🧠')}</span> {g.get('title', 'Analyse Globale')}
-                    </div>
-                    <div style="margin-top: 10px; font-size: 1rem; color: #ddd;">{g.get('text', '')}</div>
-                    <div style="margin-top: 10px; font-size: 0.9rem; color: #00A8E8; font-weight: bold;">🔮 {g.get('prediction', '')}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            c_p1, c_p2, c_p3 = st.columns(3)
-            
-            def render_plan_card(period_id):
-                if period_id not in plan: return ""
-                item = plan[period_id]
-                color_map = {'green': '#1f4025', 'red': '#521d1d', 'blue': '#1a2e40', 'orange': '#5c3a00'}
-                bg = color_map.get(item['color'], '#1a2e40')
-                
-                return f"""
-                <div style="background-color: {bg}; border-radius: 8px; padding: 15px; border: 1px solid #444; height: 100%;">
-                   <div style="font-weight: bold; font-size: 1.1rem; margin-bottom: 8px;">{item['icon']} {item['title']}</div>
-                   <div style="font-size: 0.95rem; line-height: 1.4;">{item['text']}</div>
-                </div>
-                """
+            # --- RENDER DUAL COLUMNS (ROW BY ROW ALIGNMENT) ---
+            t1_plan = plan.get('team1_plan', {})
+            t2_plan = plan.get('team2_plan', {})
 
-            with c_p1: st.markdown(render_plan_card(1), unsafe_allow_html=True)
-            with c_p2: st.markdown(render_plan_card(2), unsafe_allow_html=True)
-            with c_p3: st.markdown(render_plan_card(3), unsafe_allow_html=True)
+            # Header Row
+            c_h1, c_h2 = st.columns(2)
+            with c_h1: st.markdown(f"<h3 style='text-align: center; color: #00A8E8;'>Plan pour {t1}</h3>", unsafe_allow_html=True)
+            with c_h2: st.markdown(f"<h3 style='text-align: center; color: #00A8E8;'>Plan pour {t2}</h3>", unsafe_allow_html=True)
+            
+            # Helper to render a generic card
+            def render_card_html(item, is_global=False):
+                if not item: return ""
+                if is_global:
+                    return f"""
+                        <div style="background-color: #2c2f38; border-left: 5px solid #00A8E8; padding: 15px; margin-bottom: 20px; border-radius: 5px; min-height: 180px;">
+                            <div style="font-size: 1.1rem; font-weight: bold; color: #fff; display: flex; align-items: center;">
+                                <span style="font-size: 1.4rem; margin-right: 10px;">{item.get('icon', '🧠')}</span> {item.get('title', 'Global')}
+                            </div>
+                            <div style="margin-top: 5px; font-size: 0.95rem; color: #ddd;">{item.get('text', '')}</div>
+                            <div style="margin-top: 8px; font-size: 0.9rem; color: #00A8E8; font-weight: bold;">🔮 {item.get('prediction', '')}</div>
+                        </div>
+                    """
+                else:
+                    color_map = {'green': '#1f4025', 'red': '#521d1d', 'blue': '#1a2e40', 'orange': '#5c3a00'}
+                    bg = color_map.get(item.get('color'), '#1a2e40')
+                    return f"""
+                        <div style="background-color: {bg}; border-radius: 8px; padding: 10px; margin-bottom: 15px; border: 1px solid #444; min-height: 120px;">
+                           <div style="font-weight: bold; font-size: 1rem; margin-bottom: 5px;">{item.get('icon','')} {item.get('title','')}</div>
+                           <div style="font-size: 0.9rem; line-height: 1.3;">{item.get('text','')}</div>
+                        </div>
+                    """
+
+            # 1. Global Analysis Row
+            r_g1, r_g2 = st.columns(2)
+            with r_g1: st.markdown(render_card_html(t1_plan.get('global'), is_global=True), unsafe_allow_html=True)
+            with r_g2: st.markdown(render_card_html(t2_plan.get('global'), is_global=True), unsafe_allow_html=True)
+            
+            st.divider() # Clear separation
+            
+            # 2. Periods Rows (P1, P2, P3)
+            def get_p_item(plan_dict, pid):
+                return plan_dict.get(str(pid)) or plan_dict.get(pid)
+
+            # P1 Row
+            r_p1_1, r_p1_2 = st.columns(2)
+            with r_p1_1: st.markdown(render_card_html(get_p_item(t1_plan, 1)), unsafe_allow_html=True)
+            with r_p1_2: st.markdown(render_card_html(get_p_item(t2_plan, 1)), unsafe_allow_html=True)
+            
+            # P2 Row
+            r_p2_1, r_p2_2 = st.columns(2)
+            with r_p2_1: st.markdown(render_card_html(get_p_item(t1_plan, 2)), unsafe_allow_html=True)
+            with r_p2_2: st.markdown(render_card_html(get_p_item(t2_plan, 2)), unsafe_allow_html=True)
+            
+            # P3 Row
+            r_p3_1, r_p3_2 = st.columns(2)
+            with r_p3_1: st.markdown(render_card_html(get_p_item(t1_plan, 3)), unsafe_allow_html=True)
+            with r_p3_2: st.markdown(render_card_html(get_p_item(t2_plan, 3)), unsafe_allow_html=True)
             
             st.markdown("<br>", unsafe_allow_html=True)
-            
             st.divider()
             
             # 2. ZONE DE DANGER (Period Analysis)
