@@ -1971,15 +1971,35 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                     def to_french_dict(row):
                         if not hasattr(row, 'to_dict'): return str(row)
                         d = row.to_dict()
-                        # Map common keys to French
+                        # Map common keys to French WITH DEFINITIONS
                         mapping = {
-                            'GP': 'MJ (Matchs Joués)', 'W': 'V (Victoires)', 'L': 'D (Défaites)', 'OTL': 'DP (Défaites Prol.)',
-                            'PTS': 'PTS (Points)', 'GF': 'BP (Buts Pour)', 'GA': 'BC (Buts Contre)',
-                            'PP%': '%AN (Avantage Numérique)', 'PK%': '%DN (Désavantage Numérique)',
-                            'PIM': 'PUN (Minutes Punition)'
+                            'GP': 'MJ (Matchs Joués - Total des matchs disputés)',
+                            'W': 'V (Victoires - Matchs gagnés)',
+                            'L': 'D (Défaites - Matchs perdus)',
+                            'T': 'N (Nulles - Matchs nuls)',
+                            'OTL': 'DP (Défaites en prolongation - Point bonus)',
+                            'PTS': 'PTS (Points - Total au classement: V=2, N=1, +Franc-Jeu)',
+                            'PTS/MJ': 'PTS/MJ (Points par match - Indice de performance)',
+                            'GF': 'BP (Buts Pour - Total offensif)',
+                            'GA': 'BC (Buts Contre - Total défensif)',
+                            'DIFF': 'DIFF (Différentiel - BP moins BC)',
+                            'FJ': 'FJ (Franc-Jeu - Points bonus pour discipline)',
+                            'PP%': '%AN (Efficacité Avantage Numérique)',
+                            'PP': 'AN (Unités - Buts/Tentatives)',
+                            'PP_G': 'Buts AN (Total buts en avantage numérique)',
+                            'PP_Att': 'Tentatives AN (Opportunités totales)',
+                            'PK%': '%DN (Efficacité Désavantage Numérique)',
+                            'PK': 'DN (Unités - Kills/Tentatives)',
+                            'PK_Kills': 'Kills DN (Fois où l\'équipe a survécu à une punition)',
+                            'PK_Att': 'Fois en DN (Nombre total de désavantages numériques)',
+                            'PIM': 'PUN (Minutes de Punition - Total saison)',
                         }
+                        
+                        # Filter to include ONLY useful keys (remove internal IDs if any)
+                        # And sort roughly by importance if possible, or just dump all
                         new_d = {}
                         for k, v in d.items():
+                            if k in ['Team', 'Rang']: continue # Skip name, used elsewhere
                             key_fr = mapping.get(k, k)
                             new_d[key_fr] = v
                         return new_d
