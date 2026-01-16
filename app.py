@@ -42,6 +42,21 @@ def parse_french_date(date_str):
         pass
     return None
 
+# --- CONFIGURATION & CONSTANTS ---
+
+# PENALTY CODES MAPPING (Spordle/Hockey Quebec Standard)
+PENALTY_CODES = {
+    'A1': 'Abus envers les officiels', 'A2': 'Ajustement d\'équipement', 'A3': 'Instigateur', 'A9': 'Agresseur',
+    'A22': 'Inconduite', 'A25': 'Trop de joueurs', 'A37': 'Coup de tête', 'A39': 'Mise en échec par derrière',
+    'D39': 'Mise en échec par derrière (Majeure)', 'A44': 'Abus verbal/gestuel', 'A47': 'Rudesse', 'A48': 'Contact à la tête',
+    'B48': 'Contact à la tête (Majeure)', 'C48': 'Contact à la tête (Double-Mineure)', 'A50': 'Retenir',
+    'A51': 'Rudesse', 'A52': 'Harponner', 'A53': 'Bâton élevé', 'A54': 'Obstruction', 'A55': 'Accrocher',
+    'A56': 'Interférence banc/glace', 'A57': 'Trébucher', 'A59': 'Double-échec', 'A61': 'Cinglage',
+    'C61': 'Cinglage (Double-Mineure)', 'D61': 'Cinglage (Majeure)', 'A76': 'Équipement non conforme', 
+    'D76': 'Équipement (Majeure)', 'A81': 'Bataille', 'D81': 'Bataille (Majeure)', 'A92': 'Inconduite', 
+    'A99': 'Inconduite de partie', 'E1': 'Match', 'E48': 'Match (Tête)'
+}
+
 def load_data():
     conn = sqlite3.connect(DB_NAME)
     
@@ -83,8 +98,164 @@ def load_data():
         # Goals/Penalties
         goals['team_name'] = goals['team_name'].replace(alias, canonical)
         penalties['team_name'] = penalties['team_name'].replace(alias, canonical)
+
+
     
     return games, goals, penalties
+
+    
+    # Apply Mapping
+    # Apply Mapping - REMOVED to show raw codes in table (Legend will explain)
+    # penalties['code'] = penalties['code'].map(lambda x: PENALTY_CODES.get(str(x).upper().strip(), str(x)))
+    
+    return games, goals, penalties
+
+
+def render_penalty_analysis_section(penalties_df, title_prefix=""):
+    """
+    Renders the Penalty Analysis Section (Legend + 2 Summary Tables).
+    Assumes penalties_df is already filtered for the relevant team(s) and context.
+    """
+    # --- LEGEND (Toggle Style) ---
+    if 'code' not in penalties_df.columns:
+         st.warning("Données de punitions invalides (colonne 'code' manquante).")
+         return
+         
+    params_codes = sorted(penalties_df['code'].unique())
+    
+    # Init Toggle State
+    if 'leg_penalties' not in st.session_state: st.session_state.leg_penalties = False
+    
+    # Layout: Title + Button
+    c_title, c_btn = st.columns([0.85, 0.15])
+    with c_title:
+        st.markdown(f"### 📊 Analyse des Infractions {title_prefix}")
+    with c_btn:
+        if st.button("Légende 📝", key=f"btn_leg_pen_{title_prefix}"):
+             st.session_state.leg_penalties = not st.session_state.leg_penalties
+
+    if st.session_state.leg_penalties:
+        start_html = "<div style='display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; background-color: #1a1e24; padding: 10px; border-radius: 8px; border: 1px solid #333;'>"
+        legend_chips = ""
+        for c in params_codes:
+            desc = PENALTY_CODES.get(str(c).upper().strip(), "N/A")
+            legend_chips += f"<span style='background-color: #333; color: #ddd; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;'><b>{c}</b> : {desc}</span>"
+        end_html = "</div>"
+        st.markdown(start_html + legend_chips + end_html, unsafe_allow_html=True)
+    
+    col_p1, col_p2 = st.columns(2)
+    
+    # 1. Top 5 Infractions (Équipe) - With Period Breakdown
+    with col_p1:
+            st.markdown("**Top 5 Infractions (Totaux & Périodes)**")
+            if 'period' in penalties_df.columns:
+                p_piv = penalties_df.groupby(['code', 'period']).size().unstack(fill_value=0)
+                for p in [1, 2, 3]:
+                    if p not in p_piv.columns: p_piv[p] = 0
+                p_piv = p_piv.astype(int)
+                p_piv['Total'] = p_piv.sum(axis=1)
+                p_piv = p_piv.sort_values('Total', ascending=False).head(5)
+                p_final = p_piv[['Total', 1, 2, 3]].reset_index()
+                
+                # HTML Table Generation
+                html_rows = ""
+                for _, row in p_final.iterrows():
+                    code_clean = str(row['code']).upper().strip()
+                    desc_display = PENALTY_CODES.get(code_clean, code_clean) # Show Desc, fallback to Code
+                    
+                    html_rows += f"""
+                    <tr style="border-bottom: 1px solid #444;">
+                    <td style="text-align: left; padding: 5px; font-weight: bold; color: #eee; font-size: 0.9rem;">{desc_display}</td>
+                    <td style="text-align: center; color: #fff; font-weight: bold; font-size: 1.1em;">{row['Total']}</td>
+                    <td style="text-align: center; color: #ccc;">{row[1]}</td>
+                    <td style="text-align: center; color: #ccc;">{row[2]}</td>
+                    <td style="text-align: center; color: #ccc;">{row[3]}</td>
+                    </tr>"""
+                
+                tbl_html = f"""
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                <thead>
+                    <tr style="border-bottom: 2px solid #555; color: #aaa;">
+                        <th style="text-align: left; padding-bottom: 5px;">Infraction</th>
+                        <th style="text-align: center;">Total</th>
+                        <th style="text-align: center;">P1</th>
+                        <th style="text-align: center;">P2</th>
+                        <th style="text-align: center;">P3</th>
+                    </tr>
+                </thead>
+                <tbody>{html_rows}</tbody>
+                </table>
+                """
+                st.markdown(tbl_html, unsafe_allow_html=True)
+            else:
+                st.warning("Données de période manquantes.")
+
+
+    # 2. Top 5 Joueurs (With Period Breakdown)
+    with col_p2:
+            st.markdown("**Top 5 Joueurs les plus punis**")
+            # Group by Player Name
+            p_col_candidates = ['player_name', 'player_name__']
+            p_col = next((c for c in p_col_candidates if c in penalties_df.columns), None)
+
+            if p_col:
+                pl_piv = penalties_df.groupby([p_col, 'period']).size().unstack(fill_value=0)
+                for p in [1, 2, 3]:
+                    if p not in pl_piv.columns: pl_piv[p] = 0
+                pl_piv = pl_piv.astype(int)
+                pl_piv['Total'] = pl_piv.sum(axis=1)
+                pl_piv = pl_piv.sort_values('Total', ascending=False).head(5)
+                
+                # Get Top Infractions
+                def get_top_infractions_html(player_name):
+                    p_recs = penalties_df[penalties_df[p_col] == player_name]
+                    counts = p_recs['code'].value_counts().head(3)
+                    
+                    items = []
+                    for k, v in counts.items():
+                        c_clean = str(k).upper().strip()
+                        d_show = PENALTY_CODES.get(c_clean, c_clean)
+                        # Truncate if too long?
+                        if len(d_show) > 20: d_show = d_show[:18] + ".."
+                        items.append(f"{d_show} ({v})")
+                        
+                    return "<br>".join(items)
+
+                pl_final = pl_piv[['Total', 1, 2, 3]].reset_index()
+                pl_final.columns = ['Joueur', 'Total', 'P1', 'P2', 'P3'] # Reset columns
+                
+                html_rows_2 = ""
+                for _, row in pl_final.iterrows():
+                    pname = row['Joueur']
+                    top_inf = get_top_infractions_html(pname)
+                    html_rows_2 += f"""
+                    <tr style="border-bottom: 1px solid #444;">
+                    <td style="text-align: left; padding: 5px; font-weight: bold; color: #eee;">{pname}</td>
+                    <td style="text-align: center; color: #fff; font-weight: bold; font-size: 1.1em;">{row['Total']}</td>
+                    <td style="text-align: center; color: #ccc;">{row['P1']}</td>
+                    <td style="text-align: center; color: #ccc;">{row['P2']}</td>
+                    <td style="text-align: center; color: #ccc;">{row['P3']}</td>
+                    <td style="text-align: left; font-size: 0.75rem; line-height: 1.2; padding: 2px; color: #bbb;">{top_inf}</td>
+                    </tr>"""
+                
+                tbl_html_2 = f"""
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                <thead>
+                    <tr style="border-bottom: 2px solid #555; color: #aaa;">
+                        <th style="text-align: left; padding-bottom: 5px;">Joueur</th>
+                        <th style="text-align: center;">Total</th>
+                        <th style="text-align: center;">P1</th>
+                        <th style="text-align: center;">P2</th>
+                        <th style="text-align: center;">P3</th>
+                        <th style="text-align: left;">Top Infractions</th>
+                    </tr>
+                </thead>
+                <tbody>{html_rows_2}</tbody>
+                </table>
+                """
+                st.markdown(tbl_html_2, unsafe_allow_html=True)
+            else:
+                 st.warning("Colonne joueur introuvable.")
 
 def calculate_standings(games, penalties, goals):
     # Get all teams
@@ -1961,7 +2132,8 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                 return ctx
 
 
-            def generate_game_plan_ai(s1, s2, p1_stats, p2_stats, snapshot, api_key, model_name='gemini-1.5-flash'):
+
+            def generate_game_plan_ai(s1, s2, p1_stats, p2_stats, snapshot, penalties_t1, penalties_t2, api_key, model_name='gemini-1.5-flash'):
                 """Generates game plan using Google Gemini AI."""
                 try:
                     genai.configure(api_key=api_key)
@@ -2007,6 +2179,58 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                     s1_fr = to_french_dict(s1)
                     s2_fr = to_french_dict(s2)
 
+                    # Extract Top 3 Infractions strings
+                    def get_top_inf(p_df):
+                        if p_df.empty or 'code' not in p_df.columns: return "Aucune donnée"
+                        counts = p_df['code'].value_counts().head(3)
+                        items = []
+                        for code, count in counts.items():
+                            desc = PENALTY_CODES.get(str(code).upper().strip(), str(code))
+                            items.append(f"{desc} ({count})")
+                        return ", ".join(items) if items else "Aucune infraction majeure"
+
+                    top_inf_t1 = get_top_inf(penalties_t1)
+                    top_inf_t2 = get_top_inf(penalties_t2)
+
+
+                    # Helper for Top Players
+                    def get_top_players(p_df):
+                        if p_df.empty: return "Aucune donnée"
+                        # Determine col
+                        p_col = 'player_name__' if 'player_name__' in p_df.columns else 'player_name'
+                        if p_col not in p_df.columns: return "N/A"
+                        
+                        # Group by player
+                        counts = p_df.groupby(p_col).size().sort_values(ascending=False).head(5)
+                        
+                        items = []
+                        for player, count in counts.items():
+                            # Get their top infraction
+                            p_recs = p_df[p_df[p_col] == player]
+                            if p_recs.empty: continue
+                            
+                            # Get duration sum (PIM)
+                            # Parse duration "2:00" -> 2
+                            # Simple approach if duration column exists
+                            pim_sum = 0
+                            if 'duration' in p_recs.columns:
+                                 # Reuse parse_pim if available or simple split
+                                 def safe_pim(x):
+                                     try:
+                                         parts = str(x).split(':')
+                                         return int(parts[0])
+                                     except: return 2 # fallback
+                                 pim_sum = p_recs['duration'].apply(safe_pim).sum()
+                            
+                            top_code = p_recs['code'].value_counts().idxmax()
+                            top_desc = PENALTY_CODES.get(str(top_code).upper().strip(), str(top_code))
+                            
+                            items.append(f"{player} ({pim_sum} PIM) - Principalement: {top_desc}")
+                        return "\n".join([f"- {i}" for i in items]) if items else "Aucun joueur majeur"
+
+                    top_players_t1 = get_top_players(penalties_t1)
+                    top_players_t2 = get_top_players(penalties_t2)
+
                     prompt = f"""
                     Agis comme un coach de hockey expert (Niveau LHJMQ/M18AAA). Analyse TOUTES les données suivantes pour deux équipes et génère DEUX plans de match distincts.
                     
@@ -2039,23 +2263,36 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                     - BP : Dom {p1_stats[3]['GF_avg']:.2f} vs Vis {p2_stats[3]['GF_avg']:.2f} 
                     - BC : Dom {p1_stats[3]['GA_avg']:.2f} vs Vis {p2_stats[3]['GA_avg']:.2f}
                     
+                    **4. Discipline & Tendances (Infractions) :**
+                    *DOMICILE (Top Infractions)*
+                    {top_inf_t1}
+                    
+                    *DOMICILE (Joueurs à surveiller)*
+                    {top_players_t1}
+                    
+                    *VISITEUR (Top Infractions)*
+                    {top_inf_t2}
+                    
+                    *VISITEUR (Joueurs à surveiller)*
+                    {top_players_t2}
+                    
                     **TACHE :**
                     Génère un objet JSON stricte avec 2 clés principales : "team1_plan" et "team2_plan".
                     
                     Pour CHAQUE plan :
-                    1. "global": Analyse générale. "text" doit expliquer qui a l'avantage et pourquoi.
+                    1. "global": Analyse générale DÉTAILLÉE. "text" doit être un paragraphe étoffé (plus long, environ 40-50 mots) expliquant le narratif du match, les enjeux et la stratégie globale.
                     2. "1", "2", "3": Conseils tactiques spécifiques à chaque période basés sur les stats ci-dessus.
                     
                     **Format JSON Attendu :**
                     {{
                         "team1_plan": {{
-                            "global": {{"title": "...", "icon": "...", "text": "...", "prediction": "..."}},
-                            "1": {{"title": "...", "color": "green/red/blue/orange", "icon": "...", "text": "..."}},
+                            "global": {{"title": "...", "icon": "EMOJI_HERE (e.g. 🧊,🔥,🛡️)", "text": "...", "prediction": "..."}},
+                            "1": {{"title": "...", "color": "green/red/blue/orange", "icon": "EMOJI_HERE", "text": "..."}},
                             "2": {{"title": "...", "color": "...", "icon": "...", "text": "..."}},
                             "3": {{"title": "...", "color": "...", "icon": "...", "text": "..."}}
                         }},
                         "team2_plan": {{
-                            "global": {{"title": "...", "icon": "...", "text": "...", "prediction": "..."}},
+                            "global": {{"title": "...", "icon": "EMOJI_HERE", "text": "...", "prediction": "..."}},
                             "1": {{"title": "...", "color": "...", "icon": "...", "text": "..."}},
                             "2": {{"title": "...", "color": "...", "icon": "...", "text": "..."}},
                             "3": {{"title": "...", "color": "...", "icon": "...", "text": "..."}}
@@ -2522,8 +2759,8 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                 if not api_key:
                     api_key = st.sidebar.text_input("Clé API Gemini", type="password")
                 
-                # Model Selection
-                model_name = st.sidebar.radio("Modèle", ["gemini-3-flash-preview", "gemini-3-pro-preview"], index=1, help="Flash est plus rapide. Pro est plus intelligent.")
+                # Model Selection (Locked to Flash)
+                model_name = "gemini-3-flash-preview"
             
             # --- NEW: Get Context Snapshot ---
             snapshot = get_game_context_snapshot(t1, t2, games, goals)
@@ -2531,7 +2768,13 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             plan = {}
             if ai_mode and api_key:
                 with st.spinner(f"L'IA ({model_name}) analyse le match..."):
-                    plan = generate_game_plan_ai(s1, s2, p_stats1, p_stats2, snapshot, api_key, model_name)
+                     # Prepare Penalties
+                     t1_name = s1.get('Team', s1.get('Équipe', ''))
+                     t2_name = s2.get('Team', s2.get('Équipe', ''))
+                     pens_t1 = penalties[penalties['team_name'] == t1_name]
+                     pens_t2 = penalties[penalties['team_name'] == t2_name]
+                     
+                     plan = generate_game_plan_ai(s1, s2, p_stats1, p_stats2, snapshot, pens_t1, pens_t2, api_key, model_name)
             
             # Fallback (or if AI not active/failed)
             if not plan:
@@ -2553,8 +2796,36 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             t1_plan = plan.get('team1_plan', {})
             t2_plan = plan.get('team2_plan', {})
 
-            # Header Row
-            c_h1, c_h2 = st.columns(2)
+            # CSS for Vertical Label
+            st.markdown("""
+            <style>
+                .vertical-text {
+                    writing-mode: vertical-rl;
+                    text-orientation: mixed;
+                    transform: rotate(180deg);
+                    text-align: center;
+                    font-weight: bold;
+                    font-size: 1.2rem;
+                    color: #888;
+                    height: 100%;
+                    max-height: 150px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-right: 2px solid #444;
+                }
+                .row-label-container {
+                     display: flex; 
+                     align-items: center; 
+                     justify-content: center; 
+                     height: 100%; 
+                     min-height: 120px;
+                }
+            </style>
+            """, unsafe_allow_html=True)
+
+            # Header Row (Skip label for header)
+            c_label, c_h1, c_h2 = st.columns([0.1, 1, 1])
             with c_h1: st.markdown(f"<h3 style='text-align: center; color: #00A8E8;'>Plan pour {t1}</h3>", unsafe_allow_html=True)
             with c_h2: st.markdown(f"<h3 style='text-align: center; color: #00A8E8;'>Plan pour {t2}</h3>", unsafe_allow_html=True)
             
@@ -2581,8 +2852,18 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                         </div>
                     """
 
+            def render_label(text):
+                 return f"""
+                 <div class="row-label-container">
+                    <div style="writing-mode: vertical-rl; transform: rotate(180deg); font-weight: bold; font-size: 1.1rem; color: #aaa; letter-spacing: 2px;">
+                        {text}
+                    </div>
+                 </div>
+                 """
+
             # 1. Global Analysis Row
-            r_g1, r_g2 = st.columns(2)
+            r_l, r_g1, r_g2 = st.columns([0.1, 1, 1])
+            with r_l: st.markdown(render_label("MATCH"), unsafe_allow_html=True)
             with r_g1: st.markdown(render_card_html(t1_plan.get('global'), is_global=True), unsafe_allow_html=True)
             with r_g2: st.markdown(render_card_html(t2_plan.get('global'), is_global=True), unsafe_allow_html=True)
             
@@ -2593,17 +2874,20 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                 return plan_dict.get(str(pid)) or plan_dict.get(pid)
 
             # P1 Row
-            r_p1_1, r_p1_2 = st.columns(2)
+            r_p1_l, r_p1_1, r_p1_2 = st.columns([0.1, 1, 1])
+            with r_p1_l: st.markdown(render_label("PERIODE 1"), unsafe_allow_html=True)
             with r_p1_1: st.markdown(render_card_html(get_p_item(t1_plan, 1)), unsafe_allow_html=True)
             with r_p1_2: st.markdown(render_card_html(get_p_item(t2_plan, 1)), unsafe_allow_html=True)
             
             # P2 Row
-            r_p2_1, r_p2_2 = st.columns(2)
+            r_p2_l, r_p2_1, r_p2_2 = st.columns([0.1, 1, 1])
+            with r_p2_l: st.markdown(render_label("PERIODE 2"), unsafe_allow_html=True)
             with r_p2_1: st.markdown(render_card_html(get_p_item(t1_plan, 2)), unsafe_allow_html=True)
             with r_p2_2: st.markdown(render_card_html(get_p_item(t2_plan, 2)), unsafe_allow_html=True)
             
             # P3 Row
-            r_p3_1, r_p3_2 = st.columns(2)
+            r_p3_l, r_p3_1, r_p3_2 = st.columns([0.1, 1, 1])
+            with r_p3_l: st.markdown(render_label("PERIODE 3"), unsafe_allow_html=True)
             with r_p3_1: st.markdown(render_card_html(get_p_item(t1_plan, 3)), unsafe_allow_html=True)
             with r_p3_2: st.markdown(render_card_html(get_p_item(t2_plan, 3)), unsafe_allow_html=True)
             
@@ -2861,7 +3145,30 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
 
     with tab1:
         # Journal Layout
-        if len(selected_teams) > 1: st.subheader("Liste des Matchs")
+        if len(selected_teams) == 2: 
+             st.subheader("Analyse des Punitions")
+             # Sort teams alphabetically or use selected_teams order
+             ts = selected_teams
+             
+             # Pen Analysis for Team 1
+             t1 = ts[0]
+             st.markdown(f"#### {t1}")
+             # Filter penalties for T1 in these games?
+             # 'penalties' passed to render_dashboard contains ALL penalties or filtered?
+             # 'penalties' arg usually contains filtered penalties if stats_mode != Un contre tous.
+             # If Un contre tous, it has all.
+             p1 = penalties[penalties['team_name'] == t1]
+             render_penalty_analysis_section(p1, f"- {t1}")
+             
+             # Pen Analysis for Team 2
+             t2 = ts[1]
+             st.divider()
+             st.markdown(f"#### {t2}")
+             p2 = penalties[penalties['team_name'] == t2]
+             render_penalty_analysis_section(p2, f"- {t2}")
+             
+             st.divider()
+             st.subheader("Liste des Matchs")
         
         # Add Link
         # Prepare Data for Interactive Table
@@ -2950,25 +3257,26 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
         with tab2:
             st.subheader("Punitions")
             penalties_filtered['Date'] = penalties_filtered['date_dt'].apply(format_date_fr)
-            cols_p = ['Date'] + [c for c in penalties_filtered.columns if c not in ['date_dt', 'game_id', 'team_id', 'Date']]
             
-            # Fix: Sort by date_dt BEFORE filtering columns
+            # --- NEW ANALYSIS TABLES ---
+            render_penalty_analysis_section(penalties_filtered)
+
+            st.divider()
+            st.markdown("### 📝 Liste Complète")
+
+            cols_p = ['Date', 'period', 'time', 'team_name', 'player_name', 'code', 'duration', 'player_jersey']
+            # Reorder for display (remove Date if redundant, but keep just in case)
+            # Standard order: Date, Period, Time, Team (Filtered out?), Player, Code, Duration, Jersey
+            
+            # Since single team, team_name is redundant
             p_display = penalties_filtered.sort_values(by='date_dt', ascending=False)[cols_p]
+            p_display = p_display.rename(columns={
+                'period': 'Période', 'time': 'Temps', 'player_name': 'Joueur', 
+                'code': 'Infraction', 'duration': 'Durée', 'player_jersey': '#'
+            })
             
-            styler_p = p_display.style.set_properties(
-                **{'text-align': 'center'}
-            ).set_table_styles([
-                {'selector': 'th', 'props': [('text-align', 'center !important')]},
-                {'selector': 'td', 'props': [('text-align', 'center !important')]}
-            ]).hide(axis='index')
-            
-            # render_scrollable_table(styler_p, height=500) # Removed
             st.dataframe(
-                p_display,
-                column_config={
-                    "Date": st.column_config.TextColumn("Date", width="small"),
-                    # Add other specific column configs if necessary
-                },
+                p_display[['Date', 'Période', 'Temps', 'Joueur', 'Infraction', 'Durée', '#']],
                 use_container_width=True,
                 hide_index=True,
                 height=500
