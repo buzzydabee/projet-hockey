@@ -4,3 +4,4 @@ streamlit
 pandas
 pypdf
 matplotlib 
+google-generativeai
