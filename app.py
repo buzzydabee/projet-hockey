@@ -275,13 +275,18 @@ def calculate_standings(games, penalties, goals):
                  try: pim += int(d.split(':')[0])
                  except: pass
         
-        # Init
         s = {
             'Team': team, 'GP': len(t_games), 'W': 0, 'L': 0, 'T': 0, 
-            'PTS': 0, 'GF': 0, 'GA': 0, 'FJ': 0,
+            'FJ': 0, 'GF': 0, 'GA': 0, 'PIM_Total_Calc': 0,
             'PP_G': 0, 'PP_Att': 0, 'PK_Kills': 0, 'PK_Att': 0,
-            'PP_G_Rec': 0, 'PP_Att_Rec': 0, 'PK_Kills_Rec': 0, 'PK_Att_Rec': 0
+            'PP_G_Rec': 0, 'PP_Att_Rec': 0, 'PK_Kills_Rec': 0, 'PK_Att_Rec': 0,
+            # Per Period Lists
+            'GF_P': {1:0, 2:0, 3:0}, 'GA_P': {1:0, 2:0, 3:0},
+            'PIM_P': {1:0, 2:0, 3:0},
+            'PP_Rec_P': {1:{'g':0,'a':0}, 2:{'g':0,'a':0}, 3:{'g':0,'a':0}},
+            'PK_Rec_P': {1:{'k':0,'a':0}, 2:{'k':0,'a':0}, 3:{'k':0,'a':0}}
         }
+
         
         if len(t_games) == 0:
             continue
@@ -342,6 +347,7 @@ def calculate_standings(games, penalties, goals):
             
             # Add to Team Stats
             # Add to Team Stats
+            # Add to Team Stats
             if is_home:
                 # My PP (Home)
                 s['PP_G_Rec'] += rec_stats['pp_g_home']
@@ -352,7 +358,35 @@ def calculate_standings(games, penalties, goals):
                 opp_att_rec = rec_stats['pp_att_vis']
                 s['PK_Att_Rec'] += opp_att_rec
                 s['PK_Kills_Rec'] += (opp_att_rec - opp_g_rec)
-            else:
+                
+                # --- Per Period Splitting ---
+                for p in [1, 2, 3]:
+                    # GF/GA
+                    s['GF_P'][p] += len(g_goals[(g_goals['period'] == p) & (g_goals['team_id'] == hid)])
+                    s['GA_P'][p] += len(g_goals[(g_goals['period'] == p) & (g_goals['team_id'] == vid)])
+                    
+                    # PIM
+                    # Filter penalties for this game/period/team
+                    # Assume parse_time handles period filtering? No, FactPenalties has 'period' column
+                    ps = g_pens[(g_pens['period'] == p) & (g_pens['team_id'] == hid)]
+                    dur = 0
+                    for _, pen in ps.iterrows():
+                        try: dur += int(str(pen['duration']).split(':')[0])
+                        except: pass
+                    s['PIM_P'][p] += dur
+                    
+                    # Special Teams (Rec)
+                    if 'per_period' in rec_stats and p in rec_stats['per_period']:
+                        pp = rec_stats['per_period'][p]
+                        s['PP_Rec_P'][p]['g'] += pp['pp_g_home']
+                        s['PP_Rec_P'][p]['a'] += pp['pp_att_home']
+                        
+                        pk_att = pp['pp_att_vis']
+                        pk_g = pp['pp_g_vis']
+                        s['PK_Rec_P'][p]['a'] += pk_att
+                        s['PK_Rec_P'][p]['k'] += (pk_att - pk_g)
+
+            else: # Visitor
                 # My PP (Visitor)
                 s['PP_G_Rec'] += rec_stats['pp_g_vis']
                 s['PP_Att_Rec'] += rec_stats['pp_att_vis']
@@ -362,6 +396,31 @@ def calculate_standings(games, penalties, goals):
                 opp_att_rec = rec_stats['pp_att_home']
                 s['PK_Att_Rec'] += opp_att_rec
                 s['PK_Kills_Rec'] += (opp_att_rec - opp_g_rec)
+                
+                # --- Per Period Splitting ---
+                for p in [1, 2, 3]:
+                    # GF/GA
+                    s['GF_P'][p] += len(g_goals[(g_goals['period'] == p) & (g_goals['team_id'] == vid)])
+                    s['GA_P'][p] += len(g_goals[(g_goals['period'] == p) & (g_goals['team_id'] == hid)])
+                    
+                    # PIM
+                    ps = g_pens[(g_pens['period'] == p) & (g_pens['team_id'] == vid)]
+                    dur = 0
+                    for _, pen in ps.iterrows():
+                        try: dur += int(str(pen['duration']).split(':')[0])
+                        except: pass
+                    s['PIM_P'][p] += dur
+                    
+                    # Special Teams
+                    if 'per_period' in rec_stats and p in rec_stats['per_period']:
+                        pp = rec_stats['per_period'][p]
+                        s['PP_Rec_P'][p]['g'] += pp['pp_g_vis']
+                        s['PP_Rec_P'][p]['a'] += pp['pp_att_vis']
+                        
+                        pk_att = pp['pp_att_home']
+                        pk_g = pp['pp_g_home']
+                        s['PK_Rec_P'][p]['a'] += pk_att
+                        s['PK_Rec_P'][p]['k'] += (pk_att - pk_g)
 
         # Points Formula: W*2 + T*1 + FJ
         s['PTS'] = (s['W'] * 2) + (s['T'] * 1) + s['FJ']
@@ -383,6 +442,25 @@ def calculate_standings(games, penalties, goals):
         # s['PK (Rec)'] = f"{s['PK_Kills_Rec']}/{s['PK_Att_Rec']}" # Removed
         s['PIM'] = pim
         s['DIFF'] = s['GF'] - s['GA']
+        
+        # Format Per Period
+        for p in [1, 2, 3]:
+            # Simple Stats
+            s[f'BP P{p}'] = s['GF_P'][p]
+            s[f'BC P{p}'] = s['GA_P'][p]
+            s[f'DIFF P{p}'] = s['GF_P'][p] - s['GA_P'][p]
+            s[f'PUN P{p}'] = s['PIM_P'][p]
+            
+            # Special Teams
+            pp_a = s['PP_Rec_P'][p]['a']
+            s[f'%AN P{p}'] = round((s['PP_Rec_P'][p]['g'] / pp_a * 100), 0) if pp_a > 0 else 0
+            
+            pk_a = s['PK_Rec_P'][p]['a']
+            s[f'%DN P{p}'] = round((s['PK_Rec_P'][p]['k'] / pk_a * 100), 0) if pk_a > 0 else 0
+            
+            # Formatted String (Optional, but using float for sorting usually better)
+            # Keeping as numbers for now
+
         
         stats.append(s)
         
@@ -433,7 +511,12 @@ def calculate_standings(games, penalties, goals):
         if not standings.empty:
              standings = standings[standings['Team'].isin(selected_teams)]
     
-        cols_to_show = ['Team', 'PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'PP%', 'PP% Rec', 'PK%', 'PK% Rec', 'PIM']  # Simplified view
+        cols_to_show = ['Team', 'PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'PP%', 'PP% Rec', 'PK%', 'PK% Rec', 'PIM',
+                        'BP P1', 'BP P2', 'BP P3', 
+                        'BC P1', 'BC P2', 'BC P3',
+                        '%AN P1', '%AN P2', '%AN P3',
+                        '%DN P1', '%DN P2', '%DN P3',
+                        'PUN P1', 'PUN P2', 'PUN P3']  # Expanded view
         st.dataframe(standings[cols_to_show])
 
 def parse_time_to_seconds(period, time_str):
@@ -830,7 +913,10 @@ def main():
              if len(valid_qt) >= 2:
                  st.session_state["filter_mode_idx"] = 2 
                  # st.session_state["filter_mode"] = "Sélection Personnalisée" # Removed key
-                 st.session_state["selected_teams_custom"] = valid_qt 
+                 st.session_state["filter_mode_idx"] = 2 
+                 # st.session_state["filter_mode"] = "Sélection Personnalisée" # Removed key
+                 st.session_state["custom_teams_target"] = valid_qt # Use Target State
+                 st.session_state["radio_ver"] += 1 # Force Reset 
                  st.query_params.clear()
                  st.rerun()
              else:
@@ -846,7 +932,10 @@ def main():
                  if t1 in all_teams and t2 in all_teams:
                      st.session_state["filter_mode_idx"] = 2
                      st.session_state["filter_mode"] = "Sélection Personnalisée"
-                     st.session_state["selected_teams_custom"] = [t1, t2]
+                     st.session_state["filter_mode_idx"] = 2
+                     st.session_state["filter_mode"] = "Sélection Personnalisée"
+                     st.session_state["custom_teams_target"] = [t1, t2] # Use Target State
+                     st.session_state["radio_ver"] += 1 # Force Reset
                      st.query_params.clear()
                      st.rerun()
     except Exception as e:
@@ -879,9 +968,20 @@ def main():
                 st.sidebar.success(f"{len(selected_teams)} équipes dans {div}")
                 
     elif filter_mode == "Sélection Personnalisée":
-        default_t = "BÉLIERS QUÉBEC-CENTRE"
-        defaults = [default_t] if default_t in all_teams else all_teams[:1]
-        selected_teams = st.sidebar.multiselect("Choisir les Équipes", all_teams, default=defaults, key="selected_teams_custom")
+        # Dynamic Defaults Logic
+        defaults = None
+        if "custom_teams_target" in st.session_state:
+             defaults = st.session_state.pop("custom_teams_target")
+        
+        # Fallback defaults if simple init
+        if not defaults:
+            default_t = "BÉLIERS QUÉBEC-CENTRE"
+            defaults = [default_t] if default_t in all_teams else all_teams[:1]
+
+        # Use Dynamic Key based on Radio Version (which increments on forced updates)
+        ms_key = f"selected_teams_custom_{st.session_state.get('radio_ver', 0)}"
+        
+        selected_teams = st.sidebar.multiselect("Choisir les Équipes", all_teams, default=defaults, key=ms_key)
     
     # --- STATS MODE ---
     # stats_mode = st.sidebar.radio("Mode de Calcul", ["Stats Globales", "Un contre tous", "Face-à-Face"], key="calc_mode")
@@ -1368,7 +1468,12 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
          # Create empty with correct columns to avoid KeyError
          standings = pd.DataFrame(columns=['Équipe', 'PTS/MJ', 'PTS', 'MJ', 'V', 'D', 'N', 'FJ', 'BP', 'BC', 'DIFF', '%AN', '%DN', 'PUN'])
 
-    cols_to_show = ['Équipe', 'PTS/MJ', 'PTS', 'MJ', 'V', 'D', 'N', 'FJ', 'BP', 'BC', 'DIFF', '%AN', '%DN', 'PUN']
+    cols_to_show = ['Équipe', 'PTS/MJ', 'PTS', 'MJ', 'V', 'D', 'N', 'FJ', 'BP', 'BC', 'DIFF', '%AN', '%DN', 'PUN',
+                    'BP P1', 'BP P2', 'BP P3', 
+                    'BC P1', 'BC P2', 'BC P3',
+                    '%AN P1', '%AN P2', '%AN P3',
+                    '%DN P1', '%DN P2', '%DN P3',
+                    'PUN P1', 'PUN P2', 'PUN P3']
     
     # Normalization Logic
     if normalize:
@@ -1391,7 +1496,10 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
         orig_cols = [c for c in orig_cols if c != 'PTS/MJ' and c != 'MJ']
         
         # New Request: Add MJ as first stat
-        cols_to_show = ['Équipe', 'MJ'] + norm_cols_ordered + orig_cols
+        cols_to_show = ['Équipe', 'MJ'] + norm_cols_ordered + orig_cols + \
+                       ['BP P1', 'BP P2', 'BP P3', 'BC P1', 'BC P2', 'BC P3',
+                        '%AN P1', '%AN P2', '%AN P3', '%DN P1', '%DN P2', '%DN P3',
+                        'PUN P1', 'PUN P2', 'PUN P3']
 
     # --- HEATMAP LOGIC ---
     # Define Roots
@@ -1419,6 +1527,10 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
     def get_column_type(col_name):
         # Remove /MJ suffix for check
         root = col_name.replace('/MJ', '')
+        # Remove Period suffix
+        for suffix in [' P1', ' P2', ' P3']:
+            root = root.replace(suffix, '')
+            
         if root in pos_roots: return 'pos'
         if root in neg_roots: return 'neg'
         return 'neu'
@@ -1489,8 +1601,12 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             standings.index.name = "Rang"
             standings = standings.reset_index()
             
-            # Updated Cols Display: Rang + others (ensure Rang is first)
-            cols_display = ['Rang'] + cols_data 
+            # Pin "Équipe" by moving it to Index
+            standings = standings.set_index(["Rang", "Équipe"])
+            
+            # Updated Cols Display: (Rang and Equipe are in index, so exclude from data cols)
+            cols_display = [c for c in cols_data if c != 'Équipe']
+ 
             
             # Define stats_cols for centering (exclude text columns)
             stats_cols = [c for c in cols_display if c not in ['Rang', 'Équipe']]
@@ -1526,9 +1642,18 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
     center_cols = [c for c in cols_display if c not in left_align_cols]
     
     
+    # Filter std_pos/std_neg to only include columns currently in display
+    # (cols_display might rely on cols_data, but let's be safe)
+    valid_pos = [c for c in std_pos if c in cols_display]
+    valid_neg = [c for c in std_neg if c in cols_display]
+
     styler_standings = standings[cols_display].style.set_properties(
         subset=center_cols,
         **{'text-align': 'center'}
+    ).background_gradient(
+        cmap=cmap_pos, subset=valid_pos
+    ).background_gradient(
+        cmap=cmap_neg, subset=valid_neg
     ).set_table_styles([
         {'selector': 'th:not(.index_name)', 'props': [('text-align', 'center')]},
         {'selector': 'td', 'props': [('text-align', 'center')]}
@@ -1537,7 +1662,8 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
     st.dataframe(
         styler_standings,
         column_config=s_col_config,
-        hide_index=True
+        # use_container_width=True # REMOVED (Previous Step)
+        # hide_index=True # REMOVED to Show Pinned Index
     )
     
     # --- GOALIE STATS ---
@@ -1607,13 +1733,16 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             # STYLING
             # Center stats columns (Skip Rang, Nom, Team)
             
-            # Pin Nom: Keep it as a column instead of Index to ensure white color
-            # gdf.set_index("Nom", append=True, inplace=True) # REMOVED to fix color
+            # Pin Nom: Keep it as a column instead of Index to ensure white color -- REVERTING: Pin it via Index
             gdf.index.name = "Rang"
             gdf = gdf.reset_index()
+            # Set MultiIndex for Pinning
+            gdf = gdf.set_index(["Rang", "Nom"])
             
-            # Cols to display (Nom is now included in columns)
-            cols_display = ['Rang'] + cols 
+            # Cols to display (Nom is in index)
+            # Remove Nom from cols list for display if it's in index? 
+            # Streamlit displays Index columns automatically.
+            cols_display = [c for c in cols if c != 'Nom'] 
             
             # Format for display (st.dataframe handles basic formatting, but we can refine)
             # We want specific column configs
@@ -1651,9 +1780,17 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             left_align_cols = ['Équipe', 'Nom', 'Aréna']
             center_cols_g = [c for c in cols_display if c not in left_align_cols]
             
+            # Identify pos/neg columns for heatmap
+            valid_pos_g = [c for c in cols_display if get_column_type(c) == 'pos']
+            valid_neg_g = [c for c in cols_display if get_column_type(c) == 'neg']
+
             styler_gdf = gdf[cols_display].style.set_properties(
                 subset=center_cols_g,
                 **{'text-align': 'center'}
+            ).background_gradient(
+                cmap=cmap_pos, subset=valid_pos_g
+            ).background_gradient(
+                cmap=cmap_neg, subset=valid_neg_g
             ).set_table_styles([
                 {'selector': 'th:not(.index_name)', 'props': [('text-align', 'center')]},
                 {'selector': 'td', 'props': [('text-align', 'center')]}
@@ -1662,7 +1799,7 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             st.dataframe(
                 styler_gdf,
                 column_config=g_col_config,
-                hide_index=True
+                # hide_index=True # REMOVED for Pinning
             )
     
     # --- ADVANCED PLAYER STATS ---
@@ -1778,12 +1915,13 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             # STYLING
             stats_cols_p = cols[2:] # Skip Nom, Equipe
             
-            # Pin Nom: Keep as column
-            # p_df.set_index("Nom", append=True, inplace=True) # REMOVED
+            # Pin Nom: Keep as column -- REVERTING: Pin via Index
             p_df.index.name = "Rang"
             p_df = p_df.reset_index()
+            # Set MultiIndex for Pinning [Rang, Nom]
+            p_df = p_df.set_index(["Rang", "Nom"])
             
-            cols_display_p = ['Rang'] + cols
+            cols_display_p = [c for c in cols if c != 'Nom']
             
             # Recalculate stats cols for centering (exclude text cols)
             stats_cols_p = [c for c in cols_display_p if c not in ['Rang', 'Nom', 'Équipe']]
@@ -1835,9 +1973,17 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             left_align_cols = ['Équipe', 'Nom', 'Aréna']
             center_cols_p = [c for c in cols_display_p if c not in left_align_cols]
             
+            # Identify pos/neg columns for heatmap
+            valid_pos_p = [c for c in cols_display_p if get_column_type(c) == 'pos']
+            valid_neg_p = [c for c in cols_display_p if get_column_type(c) == 'neg']
+
             styler_pdf = p_df[cols_display_p].style.set_properties(
                 subset=center_cols_p,
                 **{'text-align': 'center'}
+            ).background_gradient(
+                cmap=cmap_pos, subset=valid_pos_p
+            ).background_gradient(
+                cmap=cmap_neg, subset=valid_neg_p
             ).set_table_styles([
                 {'selector': 'th:not(.index_name)', 'props': [('text-align', 'center')]},
                 {'selector': 'td', 'props': [('text-align', 'center')]}
@@ -1846,7 +1992,7 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             st.dataframe(
                 styler_pdf,
                 column_config=p_col_config,
-                hide_index=True
+                # hide_index=True # REMOVED for Pinning
             )
 
 
@@ -2251,12 +2397,12 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                     - Buts Pour (BP) : Dom {p1_stats[1]['GF_avg']:.2f} vs Vis {p2_stats[1]['GF_avg']:.2f}
                     - Buts Contre (BC) : Dom {p1_stats[1]['GA_avg']:.2f} vs Vis {p2_stats[1]['GA_avg']:.2f}
                     
-                    *P2 (2ème Période - Le long changement)*
+                    *P2 (2ème Période)*
                     - BP : Dom {p1_stats[2]['GF_avg']:.2f} vs Vis {p2_stats[2]['GF_avg']:.2f}
                     - BC : Dom {p1_stats[2]['GA_avg']:.2f} vs Vis {p2_stats[2]['GA_avg']:.2f}
                     - Punitions (PUN) : Dom {p1_stats[2]['PIM_avg']:.1f} vs Vis {p2_stats[2]['PIM_avg']:.1f}
                     
-                    *P3 (3ème Période - Fin de match)*
+                    *P3 (3ème Période)*
                     - BP : Dom {p1_stats[3]['GF_avg']:.2f} vs Vis {p2_stats[3]['GF_avg']:.2f} 
                     - BC : Dom {p1_stats[3]['GA_avg']:.2f} vs Vis {p2_stats[3]['GA_avg']:.2f}
                     
@@ -3243,7 +3389,7 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             # If we are NOT in Custom Mode OR the teams are different -> Trigger update
             if filter_mode != "Sélection Personnalisée" or current_teams_sorted != target_teams:
                 st.session_state["filter_mode_idx"] = 2 
-                st.session_state["selected_teams_custom"] = [t1, t2]
+                st.session_state["custom_teams_target"] = [t1, t2] # Set target for dynamic widget
                 st.session_state["radio_ver"] += 1 # Force widget reset
                 
                 # Force Rerun to apply

@@ -79,41 +79,65 @@ class GameReconstructor:
             if p > 3: return 4 # Simple OT handling
             return p
         
-        for e in events:
-            curr_time = e['time']
+        # Group events by time to handle Coincidental Penalties
+        from itertools import groupby
+        events.sort(key=lambda x: x['time'])
+        
+        for curr_time, batch_iter in groupby(events, key=lambda x: x['time']):
+            batch = list(batch_iter)
             p_idx = get_period_from_time(curr_time)
             
-            # Cleanup expired
+            # 1. Cleanup expired penalties FIRST
             for tid in [home_id, visitor_id]:
                 active_penalties[tid] = [p for p in active_penalties[tid] if p['end_time'] > curr_time]
+            
+            # 2. Separate Batch by Type
+            pens_in_batch = [e for e in batch if e['type'] == 'PENALTY']
+            goals_in_batch = [e for e in batch if e['type'] == 'GOAL']
+            
+            # 3. Process Penalties (Handle Coincidentals)
+            # Count new penalties per team in this batch
+            new_pens_home = [p for p in pens_in_batch if p['team_id'] == home_id]
+            new_pens_vis  = [p for p in pens_in_batch if p['team_id'] == visitor_id]
+            
+            count_home = len(new_pens_home)
+            count_vis = len(new_pens_vis)
+            
+            # Calculate NET advantage for ATTEMPTS stats
+            # Coincidental Rule: If T1 takes 1 and T2 takes 1, NO Power Play is credited.
+            # Only the surplus counts as an Opportunity.
+            
+            # Home Advantage? (Visitor took more penalties)
+            if count_vis > count_home:
+                diff = count_vis - count_home
+                stats['pp_att_home'] += diff
+                if p_idx in stats['per_period']: stats['per_period'][p_idx]['pp_att_home'] += diff
                 
-            if e['type'] == 'PENALTY':
-                p_team = e['team_id']
-                opp = get_opp(p_team)
+            # Visitor Advantage? (Home took more penalties)
+            if count_home > count_vis:
+                diff = count_home - count_vis
+                stats['pp_att_vis'] += diff
+                if p_idx in stats['per_period']: stats['per_period'][p_idx]['pp_att_vis'] += diff
                 
-                # Add penalty
-                active_penalties[p_team].append(e)
+            # Add ALL to active (Strength is real, even if coincidental)
+            for p in pens_in_batch:
+                active_penalties[p['team_id']].append(p)
                 
-                # Record Attempt for OPPONENT
-                if opp == home_id: 
-                    stats['pp_att_home'] += 1
-                    if p_idx in stats['per_period']: stats['per_period'][p_idx]['pp_att_home'] += 1
-                else: 
-                    stats['pp_att_vis'] += 1
-                    if p_idx in stats['per_period']: stats['per_period'][p_idx]['pp_att_vis'] += 1
-                
-            elif e['type'] == 'GOAL':
-                scoring_team = e['team_id']
+            # 4. Process Goals (After penalties are active)
+            for g in goals_in_batch:
+                scoring_team = g['team_id']
                 defending_team = get_opp(scoring_team)
                 
                 # Calculate Strength
                 def_pens = active_penalties[defending_team]
                 att_pens = active_penalties[scoring_team]
                 
-                def_strength = max(3, 5 - len(def_pens))
-                att_strength = max(3, 5 - len(att_pens))
+                # Cap strength at 5 (can't have >5 skaters)
+                # Min 3
+                def_skaters = max(3, 5 - len(def_pens))
+                att_skaters = max(3, 5 - len(att_pens))
                 
-                if att_strength > def_strength:
+                if att_skaters > def_skaters:
                     # PP GOAL
                     if scoring_team == home_id: 
                         stats['pp_g_home'] += 1
@@ -123,11 +147,10 @@ class GameReconstructor:
                         if p_idx in stats['per_period']: stats['per_period'][p_idx]['pp_g_vis'] += 1
                     
                     # Terminate Minor
-                    # Find earliest ending Minor on Defending Team
+                    # Find earliest ending Minor on Defending Team NOT Major
                     minors = sorted([p for p in def_pens if not p['is_major']], key=lambda x: x['end_time'])
                     if minors:
                         removed = minors[0]
                         active_penalties[defending_team].remove(removed)
-                        # We don't change 'stats' counts, just internal state
-                        
+        
         return stats
