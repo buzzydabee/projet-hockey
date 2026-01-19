@@ -2423,8 +2423,8 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                     Génère un objet JSON stricte avec 2 clés principales : "team1_plan" et "team2_plan".
                     
                     Pour CHAQUE plan :
-                    1. "global": Analyse générale DÉTAILLÉE. "text" doit être un paragraphe étoffé (plus long, environ 40-50 mots) expliquant le narratif du match, les enjeux et la stratégie globale.
-                    2. "1", "2", "3": Conseils tactiques spécifiques à chaque période basés sur les stats ci-dessus.
+                    1. "global": Analyse générale TRÈS DÉTAILLÉE. "text" doit être un paragraphe étoffé (environ 60-80 mots) expliquant le narratif du match, les enjeux, les tendances récentes et la stratégie globale. Soyez précis.
+                    2. "1", "2", "3": Conseils tactiques spécifiques et détaillés (environ 30-40 mots chacun) basés sur les stats ci-dessus. Évitez les généralités.
                     
                     **Format JSON Attendu :**
                     {{
@@ -2444,6 +2444,21 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                     """
                     
                     response = model.generate_content(prompt)
+                    
+                    if not response.candidates:
+                         st.error(f"IA: Aucune réponse générée. Feedback: {response.prompt_feedback}")
+                         return None
+                         
+                    c = response.candidates[0]
+                    if c.finish_reason != 1 and c.finish_reason != 0: # 1=STOP, 0=Unspecified? Usually 1. Check ENUM.
+                        # Actually simple check: does it have content?
+                        pass
+                        
+                    if not c.content or not c.content.parts:
+                         # Sometimes Safety filters block content but give finish_reason=SAFETY
+                         st.error(f"IA: Contenu vide. Raison: {c.finish_reason}. Feedback: {response.prompt_feedback}")
+                         return None
+                         
                     txt = response.text.replace('```json', '').replace('```', '').strip()
                     return json.loads(txt)
                 except Exception as e:
