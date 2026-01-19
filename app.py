@@ -407,7 +407,7 @@ def calculate_standings(games, penalties, goals):
     if not selected_teams:
         st.warning("Please select at least one team to view stats.")
         cols_to_show = ['Team', 'PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'PP%', 'PK%', 'PIM']
-        st.dataframe(pd.DataFrame(columns=cols_to_show), use_container_width=True)
+        st.dataframe(pd.DataFrame(columns=cols_to_show))
     else:
         # Filter for Standings based on SELECTED TEAMS
         # Logic: Show standings for games involving ANY of the selected teams.
@@ -434,7 +434,7 @@ def calculate_standings(games, penalties, goals):
              standings = standings[standings['Team'].isin(selected_teams)]
     
         cols_to_show = ['Team', 'PTS', 'GP', 'W', 'L', 'T', 'FJ', 'GF', 'GA', 'PP%', 'PP% Rec', 'PK%', 'PK% Rec', 'PIM']  # Simplified view
-        st.dataframe(standings[cols_to_show], use_container_width=True)
+        st.dataframe(standings[cols_to_show])
 
 def parse_time_to_seconds(period, time_str):
     try:
@@ -1537,7 +1537,6 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
     st.dataframe(
         styler_standings,
         column_config=s_col_config,
-        use_container_width=True,
         hide_index=True
     )
     
@@ -1663,7 +1662,6 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             st.dataframe(
                 styler_gdf,
                 column_config=g_col_config,
-                use_container_width=True,
                 hide_index=True
             )
     
@@ -1848,7 +1846,6 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
             st.dataframe(
                 styler_pdf,
                 column_config=p_col_config,
-                use_container_width=True,
                 hide_index=True
             )
 
