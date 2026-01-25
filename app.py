@@ -173,7 +173,8 @@ def render_penalty_analysis_section(penalties_df, title_prefix=""):
                     </tr>"""
                 
                 tbl_html = f"""
-                <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                <div class="scroll-table-container">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem; min-width: 400px;">
                 <thead>
                     <tr style="border-bottom: 2px solid #555; color: #aaa;">
                         <th style="text-align: left; padding-bottom: 5px;">Infraction</th>
@@ -185,6 +186,7 @@ def render_penalty_analysis_section(penalties_df, title_prefix=""):
                 </thead>
                 <tbody>{html_rows}</tbody>
                 </table>
+                </div>
                 """
                 st.markdown(tbl_html, unsafe_allow_html=True)
             else:
@@ -239,7 +241,8 @@ def render_penalty_analysis_section(penalties_df, title_prefix=""):
                     </tr>"""
                 
                 tbl_html_2 = f"""
-                <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                <div class="scroll-table-container">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem; min-width: 500px;">
                 <thead>
                     <tr style="border-bottom: 2px solid #555; color: #aaa;">
                         <th style="text-align: left; padding-bottom: 5px;">Joueur</th>
@@ -252,6 +255,7 @@ def render_penalty_analysis_section(penalties_df, title_prefix=""):
                 </thead>
                 <tbody>{html_rows_2}</tbody>
                 </table>
+                </div>
                 """
                 st.markdown(tbl_html_2, unsafe_allow_html=True)
             else:
@@ -875,6 +879,27 @@ def main():
         
         /* Specific column alignments if needed (but user wants all centered) */
         
+        /* Mobile Scroll Container */
+        .scroll-table-container {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            display: block;
+            margin-bottom: 1em;
+            border: 1px solid #333; /* Optional visual boundary */
+            border-radius: 4px;
+        }
+
+        /* Comparison Grid for Mobile Scroll */
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1.5fr 2fr 2fr 2fr 2fr 2fr;
+            gap: 10px;
+            min-width: 900px; /* Force overflow on mobile */
+            align-items: start;
+            margin-bottom: 20px;
+        }
+        
     </style>
     """, unsafe_allow_html=True)
     
@@ -990,10 +1015,10 @@ def main():
     normalize = st.sidebar.checkbox("Normaliser par MJ", value=False)
     
     # --- VIEWS ---
-    view = st.sidebar.radio("Vue", ["Tableau de bord", "Évolution"], index=0)
+    view = st.sidebar.radio("Vue", ["Tableau de bord", "Évolution"], index=0, key="view_mode")
 
     # Common Filter
-    min_mj = st.sidebar.number_input("Min. Parties Jouées", min_value=1, value=2)
+    min_mj = st.sidebar.number_input("Min. Parties Jouées", min_value=1, value=2, key="min_mj_filter")
 
 
     # 2. Date Filter
@@ -1006,7 +1031,8 @@ def main():
         min_value=min_date,
         max_value=max_date,
         value=(min_date, max_date),
-        format="DD MMM YYYY"
+        format="DD MMM YYYY",
+        key="date_range_slider"
     )
     
     # --- FILTER DATA ---
@@ -1068,7 +1094,7 @@ def main():
         render_dashboard(games_complete, goals, penalties, conn, selected_teams, stats_mode, players, normalize, 
                          games_global, goals_global, penalties_global, min_mj, games_full=games, filter_mode=filter_mode)
     else:
-        num_periods = st.sidebar.slider("Nombre de périodes", 1, 5, 3)
+        num_periods = st.sidebar.slider("Nombre de périodes", 1, 5, 3, key="num_periods_slider")
         render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, players, num_periods, min_mj)
         
     # --- DATA MANAGEMENT (Moved to Bottom) ---
@@ -2422,9 +2448,14 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                     **TACHE :**
                     Génère un objet JSON stricte avec 2 clés principales : "team1_plan" et "team2_plan".
                     
+                    **IMPORTANT - STYLE DE COACHING :**
+                    - Les recommandations doivent être constituées d'objectifs **concrets et atteignables** pour des joueurs de niveau M18AAA/Junior.
+                    - Le langage doit être **interprétable** immédiatement par un coach ET par les joueurs.
+                    - Évite le jargon abstrait ou les généralités comme "jouer fort". Sois spécifique : "Forcer les passes vers le centre", "Saturer l'enclave", "Utiliser la bande en sortie de zone".
+                    
                     Pour CHAQUE plan :
-                    1. "global": Analyse générale TRÈS DÉTAILLÉE. "text" doit être un paragraphe étoffé (environ 60-80 mots) expliquant le narratif du match, les enjeux, les tendances récentes et la stratégie globale. Soyez précis.
-                    2. "1", "2", "3": Conseils tactiques spécifiques et détaillés (environ 30-40 mots chacun) basés sur les stats ci-dessus. Évitez les généralités.
+                    1. "global": Analyse générale TRÈS DÉTAILLÉE. "text" doit être un paragraphe étoffé (environ 60-80 mots) expliquant le narratif du match, les enjeux, les tendances récentes et la stratégie globale.
+                    2. "1", "2", "3": Conseils tactiques spécifiques (30-40 mots). Chaque conseil doit contenir une ACTION CLAIRE.
                     
                     **Format JSON Attendu :**
                     {{
@@ -2795,13 +2826,17 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                          v_p3 = fmt_mini(v_p3_raw)
                          
                          table_html = (
-                             '<div style="margin-left: 5px;">'
-                             '<table style="font-size: 1.1rem; text-align: center; border-collapse: collapse;">'
-                             '<tr style="color: #666; border-bottom: 1px solid #444;"><td>P1</td><td>P2</td><td>P3</td></tr>'
+                             '<div style="margin-top: 5px;">'
+                             '<table style="width: 100%; font-size: 0.85rem; text-align: center; border-collapse: collapse;">'
+                             '<tr style="color: #666; border-bottom: 1px solid #444;">'
+                             '<th style="padding: 2px; font-weight: normal;">P1</th>'
+                             '<th style="padding: 2px; font-weight: normal;">P2</th>'
+                             '<th style="padding: 2px; font-weight: normal;">P3</th>'
+                             '</tr>'
                              '<tr style="color: #ccc;">'
-                             f'<td style="padding: 2px 8px; color: {c_p1}; font-weight: bold;">{v_p1}</td>'
-                             f'<td style="padding: 2px 8px; color: {c_p2}; font-weight: bold;">{v_p2}</td>'
-                             f'<td style="padding: 2px 8px; color: {c_p3}; font-weight: bold;">{v_p3}</td>'
+                             f'<td style="padding: 2px; color: {c_p1};">{v_p1}</td>'
+                             f'<td style="padding: 2px; color: {c_p2};">{v_p2}</td>'
+                             f'<td style="padding: 2px; color: {c_p3};">{v_p3}</td>'
                              '</tr></table></div>'
                          )
                      
@@ -2816,7 +2851,7 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                          '</div>'
                          '</div>'
                          f'{table_html}'
-                         '</div></div>'
+                         '</div>'
                      )
                      return html
 
@@ -2849,7 +2884,7 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                  pk_d = pk_v1 - pk_v2
 
                  # 2. Render Header Row
-                 h_cols = st.columns([1.5, 2, 2, 2, 2, 2])
+                 # Use HTML construction for Global Scroll
                  
                  def render_header(title, subtitle):
                      return f"""<div style='text-align: center; margin-bottom: 10px;'>
@@ -2857,45 +2892,57 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                          <div style='color: #fff; font-size: 0.85rem; border-top: 1px solid #444; padding-top: 2px;'>{subtitle}</div>
                      </div>"""
                  
-                 with h_cols[1]: st.markdown(render_header("Attaque", "Buts Pour / Match"), unsafe_allow_html=True)
-                 with h_cols[2]: st.markdown(render_header("Défense", "Buts Contre / Match"), unsafe_allow_html=True)
-                 with h_cols[3]: st.markdown(render_header("Avantage Num.", "% Efficacité"), unsafe_allow_html=True)
-                 with h_cols[4]: st.markdown(render_header("Désavantage Num.", "% Efficacité"), unsafe_allow_html=True)
-                 with h_cols[5]: st.markdown(render_header("Discipline", "PUN / Match"), unsafe_allow_html=True)
+                 # Headers
+                 h_cells = [
+                     "", # Empty for Label column
+                     render_header("Attaque", "Buts Pour / Match"),
+                     render_header("Défense", "Buts Contre / Match"),
+                     render_header("Avantage Num.", "% Efficacité"),
+                     render_header("Désavantage Num.", "% Efficacité"),
+                     render_header("Discipline", "PUN / Match")
+                 ]
                  
                  def render_team_label(name):
-                     return f"<div style='display: flex; align-items: center; height: 100%; font-weight: bold; font-size: 1.3rem; color: #00A8E8; padding-top: 25px; line-height: 1.2;'>{name}</div>"
+                     return f"<div style='display: flex; align-items: center; height: 100%; font-weight: bold; font-size: 1.3rem; color: #00A8E8; padding-top: 0px; line-height: 1.2; justify-content: center; text-align: center;'>{name}</div>"
 
-                 # 3. Render Team Rows
-                 # Team 1
-                 r1_cols = st.columns([1.5, 2, 2, 2, 2, 2])
-                 with r1_cols[0]:
-                     st.markdown(render_team_label(t1), unsafe_allow_html=True)
-                 with r1_cols[1]:
-                     st.markdown(render_stat_card("", off_v1, off_d, p_stats1, p_stats2, 'GF_avg'), unsafe_allow_html=True)
-                 with r1_cols[2]:
-                     st.markdown(render_stat_card("", def_v1, def_d, p_stats1, p_stats2, 'GA_avg', is_inverse=True), unsafe_allow_html=True)
-                 with r1_cols[3]:
-                     st.markdown(render_stat_card("", f"{pp_v1}%", pp_d, p_stats1, p_stats2, 'PP%', is_perc=True, show_table=True), unsafe_allow_html=True)
-                 with r1_cols[4]:
-                     st.markdown(render_stat_card("", f"{pk_v1}%", pk_d, p_stats1, p_stats2, 'PK%', is_perc=True, show_table=True), unsafe_allow_html=True)
-                 with r1_cols[5]:
-                     st.markdown(render_stat_card("", pim_v1, pim_d, p_stats1, p_stats2, 'PIM_avg', is_inverse=True), unsafe_allow_html=True)
+                 # Row 1 Cells
+                 r1_cells = [
+                     render_team_label(t1),
+                     render_stat_card("", off_v1, off_d, p_stats1, p_stats2, 'GF_avg'),
+                     render_stat_card("", def_v1, def_d, p_stats1, p_stats2, 'GA_avg', is_inverse=True),
+                     render_stat_card("", f"{pp_v1}%", pp_d, p_stats1, p_stats2, 'PP%', is_perc=True, show_table=True),
+                     render_stat_card("", f"{pk_v1}%", pk_d, p_stats1, p_stats2, 'PK%', is_perc=True, show_table=True),
+                     render_stat_card("", pim_v1, pim_d, p_stats1, p_stats2, 'PIM_avg', is_inverse=True)
+                 ]
 
-                 # Team 2
-                 r2_cols = st.columns([1.5, 2, 2, 2, 2, 2])
-                 with r2_cols[0]:
-                      st.markdown(render_team_label(t2), unsafe_allow_html=True)
-                 with r2_cols[1]:
-                     st.markdown(render_stat_card("", off_v2, -off_d, p_stats2, p_stats1, 'GF_avg'), unsafe_allow_html=True)
-                 with r2_cols[2]:
-                     st.markdown(render_stat_card("", def_v2, -def_d, p_stats2, p_stats1, 'GA_avg', is_inverse=True), unsafe_allow_html=True)
-                 with r2_cols[3]:
-                     st.markdown(render_stat_card("", f"{pp_v2}%", -pp_d, p_stats2, p_stats1, 'PP%', is_perc=True, show_table=True), unsafe_allow_html=True)
-                 with r2_cols[4]:
-                     st.markdown(render_stat_card("", f"{pk_v2}%", -pk_d, p_stats2, p_stats1, 'PK%', is_perc=True, show_table=True), unsafe_allow_html=True)
-                 with r2_cols[5]:
-                     st.markdown(render_stat_card("", pim_v2, -pim_d, p_stats2, p_stats1, 'PIM_avg', is_inverse=True), unsafe_allow_html=True)
+                 # Row 2 Cells
+                 r2_cells = [
+                     render_team_label(t2),
+                     render_stat_card("", off_v2, -off_d, p_stats2, p_stats1, 'GF_avg'),
+                     render_stat_card("", def_v2, -def_d, p_stats2, p_stats1, 'GA_avg', is_inverse=True),
+                     render_stat_card("", f"{pp_v2}%", -pp_d, p_stats2, p_stats1, 'PP%', is_perc=True, show_table=True),
+                     render_stat_card("", f"{pk_v2}%", -pk_d, p_stats2, p_stats1, 'PK%', is_perc=True, show_table=True),
+                     render_stat_card("", pim_v2, -pim_d, p_stats2, p_stats1, 'PIM_avg', is_inverse=True)
+                 ]
+                 
+                 # Build Grid HTML
+                 grid_content = ""
+                 # Headers
+                 for c in h_cells: grid_content += f"<div>{c}</div>"
+                 # Row 1
+                 for c in r1_cells: grid_content += f"<div>{c}</div>"
+                 # Row 2
+                 for c in r2_cells: grid_content += f"<div>{c}</div>"
+                 
+                 full_html = f"""
+                 <div class="scroll-table-container">
+                     <div class="comparison-grid">
+                         {grid_content}
+                     </div>
+                 </div>
+                 """
+                 
+                 st.markdown(full_html, unsafe_allow_html=True)
             
             st.divider()
 
@@ -3087,12 +3134,14 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                 # Simple HTML Table
                 # Simple HTML Table
                 z_html = (
-                    '<table style="width:100%; text-align:center; border-collapse: collapse;">'
+                    '<div class="scroll-table-container">'
+                    '<table style="width:100%; text-align:center; border-collapse: collapse; min-width: 300px;">'
                     f'<tr style="border-bottom:1px solid #444; color:#888;"><th>Période</th><th>{t1}</th><th>{t2}</th></tr>'
                     f'<tr><td>1ère</td><td style="color:{"#4caf50" if d1[1]>0 else "#ff4b4b"}">{d1[1]:+d}</td><td style="color:{"#4caf50" if d2[1]>0 else "#ff4b4b"}">{d2[1]:+d}</td></tr>'
                     f'<tr><td>2e</td><td style="color:{"#4caf50" if d1[2]>0 else "#ff4b4b"}">{d1[2]:+d}</td><td style="color:{"#4caf50" if d2[2]>0 else "#ff4b4b"}">{d2[2]:+d}</td></tr>'
                     f'<tr><td>3e</td><td style="color:{"#4caf50" if d1[3]>0 else "#ff4b4b"}">{d1[3]:+d}</td><td style="color:{"#4caf50" if d2[3]>0 else "#ff4b4b"}">{d2[3]:+d}</td></tr>'
                     '</table>'
+                    '</div>'
                 )
                 st.markdown(z_html, unsafe_allow_html=True)
                 
@@ -3133,7 +3182,8 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                     
                     rows_html = "".join(rows)
                     tbl = (
-                        '<table style="width:100%; text-align:center; border-collapse: collapse; font-size: 0.9rem;">'
+                        '<div class="scroll-table-container">'
+                        '<table style="width:100%; text-align:center; border-collapse: collapse; font-size: 0.9rem; min-width: 350px;">'
                         '<tr style="border-bottom:1px solid #444; color:#888;">'
                         '<th style="text-align:left; padding-left:10px;">Adversaire</th>'
                         f'<th>Résultat {t1}</th>'
@@ -3141,6 +3191,7 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                         '</tr>'
                         f'{rows_html}'
                         '</table>'
+                        '</div>'
                     )
                     st.markdown(tbl, unsafe_allow_html=True)
                 else:
@@ -3213,7 +3264,8 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                 # Header - Usage of dedent to avoid Markdown Code Block interpretation
                 html_header = textwrap.dedent(f"""
                 {table_style}
-                <table class="trend-table">
+                <div class="scroll-table-container">
+                <table class="trend-table" style="min-width: 800px;">
                   <thead>
                     <tr>
                        <th style="text-align: left;">Période</th>
@@ -3265,7 +3317,7 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                 if row_5 is not None:
                     html += make_html_row(row_5, "5 derniers", "trend-row-5")
                     
-                html += "</tbody></table>"
+                html += "</tbody></table></div>"
                 
                 st.markdown(html, unsafe_allow_html=True)
 
