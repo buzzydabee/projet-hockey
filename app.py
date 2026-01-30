@@ -1031,9 +1031,67 @@ def main():
     # --- STATS MODE ---
     # stats_mode = st.sidebar.radio("Mode de Calcul", ["Stats Globales", "Un contre tous", "Face-à-Face"], key="calc_mode")
     stats_mode = "Stats Globales"
-    
+    # --- OPTIONS ---
     normalize = st.sidebar.checkbox("Normaliser par MJ", value=False)
     
+    # --- DEBUG MODE (Troubleshooting Android Scroll) ---
+    debug_mode = st.sidebar.toggle("🛠️ Mode Debug & Scroll", value=False)
+    
+    if debug_mode:
+        st.markdown("""
+        <style>
+            /* Visual Debugging Borders */
+            .scroll-table-container { border: 2px solid red !important; }
+            .comparison-grid { border: 2px solid blue !important; }
+            section[data-testid="stAppViewContainer"] { border: 4px solid green !important; }
+            
+            /* Debug Overlay */
+            #debug-overlay {
+                position: fixed;
+                bottom: 10px;
+                right: 10px;
+                background: rgba(0,0,0,0.8);
+                color: lime;
+                padding: 10px;
+                z-index: 999999;
+                font-size: 12px;
+                pointer-events: none;
+                max-width: 200px;
+            }
+        </style>
+        <div id="debug-overlay">
+            Wait for JS...
+        </div>
+        <script>
+            // Simple Scroll Monitor
+            const overlay = document.getElementById('debug-overlay');
+            
+            function updateDebug() {
+                const w = window.innerWidth;
+                const sw = document.body.scrollWidth;
+                const h = window.innerHeight;
+                
+                overlay.innerHTML = `
+                    <b>Window:</b> ${w}x${h}<br>
+                    <b>Body Scroll:</b> ${sw}<br>
+                    <b>Overflow:</b> ${(sw > w) ? 'YES (BAD)' : 'NO (GOOD)'}
+                `;
+            }
+            
+            window.addEventListener('resize', updateDebug);
+            window.addEventListener('scroll', updateDebug);
+            setInterval(updateDebug, 500);
+            
+            // Track element scrolling
+            document.addEventListener('scroll', (e) => {
+                if(e.target != document) {
+                   console.log('Scroll:', e.target);
+                   // Try to add class to overlay?
+                }
+            }, true); // Capture phase
+        </script>
+        """, unsafe_allow_html=True)
+
     # --- VIEWS ---
     view = st.sidebar.radio("Vue", ["Tableau de bord", "Évolution"], index=0, key="view_mode")
 
