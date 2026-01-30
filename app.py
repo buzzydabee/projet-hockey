@@ -884,10 +884,20 @@ def main():
             width: 100%;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
+            
+            /* Prevent scrolling parent when hitting edge */
+            overscroll-behavior-x: contain;
+            
+            /* Explicitly handle horizontal pan, allowing browser to handle vertical */
+            touch-action: pan-x;
+            
             display: block;
             margin-bottom: 1em;
             border: 1px solid #333; /* Optional visual boundary */
             border-radius: 4px;
+            
+            /* Hardware acceleration to reduce repaint jitter */
+            transform: translateZ(0);
         }
 
         /* Comparison Grid for Mobile Scroll */
@@ -2306,7 +2316,15 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                 """Generates game plan using Google Gemini AI."""
                 try:
                     genai.configure(api_key=api_key)
-                    model = genai.GenerativeModel(model_name)
+                    
+                    safety_settings = [
+                        {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+                        {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                        {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+                        {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+                    ]
+                    
+                    model = genai.GenerativeModel(model_name, safety_settings=safety_settings)
                     
                     # Helper to map to French Labels
                     def to_french_dict(row):

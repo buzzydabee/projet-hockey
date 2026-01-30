@@ -1,1877 +1,5 @@
 [
   {
-    "number": "7131",
-    "date": "2026-01-11",
-    "startTime": "2026-01-11T21:30:00.000Z",
-    "endTime": "2026-01-11T23:00:00.000Z",
-    "timezone": "America/Toronto",
-    "division": "Junior",
-    "gender": "Integrated",
-    "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-    "seasonId": "2025-26",
-    "arenaId": 10465,
-    "scheduleId": 183360,
-    "groupId": null,
-    "crossGroupId": null,
-    "crossScheduleId": null,
-    "officeId": 6150,
-    "homeTeamId": 126543,
-    "awayTeamId": 126540,
-    "homeTeamComment": null,
-    "awayTeamComment": null,
-    "status": "Active",
-    "comments": null,
-    "isApproved": true,
-    "isCertified": false,
-    "spectators": null,
-    "actualStartTime": null,
-    "actualEndTime": null,
-    "id": 720515,
-    "category": {
-      "id": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-      "name": "Junior C",
-      "divisionId": "f184a861-f620-4a73-8f6c-c972c6470e3e",
-      "gender": "Integrated",
-      "classId": "81d91d4c-d9ca-40eb-a248-359bc5f0257b",
-      "order": 306,
-      "i18n": {
-        "fr": {
-          "name": "Junior C"
-        }
-      },
-      "nameFr": "Junior C",
-      "externalId": "1eebee5e-8df0-6ca0-a4a7-062a1ab93798",
-      "division": {
-        "id": "f184a861-f620-4a73-8f6c-c972c6470e3e",
-        "name": "Junior",
-        "shortName": "Junior",
-        "order": 23,
-        "i18n": {
-          "fr": {
-            "name": "Junior",
-            "shortName": "Junior"
-          }
-        }
-      },
-      "class": {
-        "id": "81d91d4c-d9ca-40eb-a248-359bc5f0257b",
-        "name": "C",
-        "shortName": "C",
-        "order": 6,
-        "i18n": {
-          "fr": {
-            "name": "C",
-            "shortName": "C"
-          }
-        }
-      }
-    },
-    "teamStats": [
-      {
-        "gameId": 720515,
-        "teamId": 126543,
-        "schemaId": "8f056ea1-457e-4fc6-b9f7-86e4e04eb058",
-        "id": 1177749,
-        "pk": 2,
-        "pim": 10,
-        "pko": 2,
-        "ppg": 0,
-        "ppo": 2,
-        "points": 2,
-        "goalFor": 3,
-        "shotFor": null,
-        "pointsPct": 1,
-        "gameResult": "win",
-        "goalAgainst": 2,
-        "shotAgainst": null,
-        "winLossType": "regulation",
-        "sportsmanship": 1,
-        "sportsmanshipPim": {
-          "totalPim": 8,
-          "regularTimePim": 8
-        },
-        "penaltyOccurrences": 5
-      },
-      {
-        "gameId": 720515,
-        "teamId": 126540,
-        "schemaId": "8f056ea1-457e-4fc6-b9f7-86e4e04eb058",
-        "id": 1177750,
-        "pk": 2,
-        "pim": 10,
-        "pko": 2,
-        "ppg": 0,
-        "ppo": 2,
-        "points": 0,
-        "goalFor": 2,
-        "shotFor": null,
-        "pointsPct": 0.333,
-        "gameResult": "loss",
-        "goalAgainst": 3,
-        "shotAgainst": null,
-        "winLossType": "regulation",
-        "sportsmanship": 1,
-        "sportsmanshipPim": {
-          "totalPim": 8,
-          "regularTimePim": 8
-        },
-        "penaltyOccurrences": 5
-      }
-    ],
-    "surface": {
-      "venueId": "26b3c516-eab8-4c55-bea8-92128727370e",
-      "parentId": null,
-      "name": "Glace 1",
-      "fraction": null,
-      "alias": "LORETTEVILLE",
-      "timezone": "America/Toronto",
-      "sports": [
-        "Hockey"
-      ],
-      "type": "Ice",
-      "size": "M",
-      "path": "10465",
-      "externalId": "c58e6af2-e2ce-472e-9d44-66fe0545f936",
-      "id": 10465,
-      "venue": {
-        "id": "26b3c516-eab8-4c55-bea8-92128727370e",
-        "name": "Colisée de Loretteville",
-        "address": "86 Bd des Étudiants",
-        "city": "Québec",
-        "region": "QC",
-        "postalCode": "G2A 2M7",
-        "country": "Canada",
-        "alias": null,
-        "timezone": "America/Toronto",
-        "externalId": "7ebc78d8-ee80-4cdb-84b5-c1141b59c32d"
-      }
-    },
-    "office": {
-      "name": "LIGUE HOCKEY MINEUR CAPITALE NATIONALE",
-      "type": "League",
-      "parentId": 6106,
-      "path": "467.2377.6106.6150",
-      "logoId": null,
-      "externalId": "1ef5f007-aa45-654a-a2df-0277dbbceb5f",
-      "timezone": "America/Toronto",
-      "isExternalTeam": false,
-      "color": "#000f46",
-      "slug": "ligue-hockey-mineur-capitale-nationale",
-      "id": 6150,
-      "createdAt": "2024-10-17T15:31:04.411Z",
-      "updatedAt": "2025-10-23T17:50:06.133Z",
-      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1ef5f007-aa45-654a-a2df-0277dbbceb5f/logos/1ef5f007-aa5c-6150-95ef-0277dbbceb5f.png"
-    },
-    "awayTeam": {
-      "name": "BOUCS QUÉBEC-CENTRE",
-      "shortName": "BOUCS QUÉBEC-CENTRE",
-      "division": "Junior",
-      "gender": "Integrated",
-      "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-      "seasonId": "2025-26",
-      "logoId": null,
-      "externalId": "1f0423c9-00c5-61ec-8150-02347ea6fef5",
-      "isPublic": true,
-      "isSanctioned": true,
-      "homeColor": "BLEU",
-      "awayColor": "BLANC",
-      "id": 126540,
-      "createdAt": "2025-06-05T18:40:35.000Z",
-      "updatedAt": "2025-11-27T14:20:19.711Z",
-      "officeId": 6128,
-      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/teams/1f0423c9-00c5-61ec-8150-02347ea6fef5/logos/1f0423c9-00b7-610a-a99f-02347ea6fef5.png"
-    },
-    "homeTeam": {
-      "name": "RADISSON QUÉBEC-CENTRE",
-      "shortName": "RADISSON QUÉBEC-CENTRE",
-      "division": "Junior",
-      "gender": "Integrated",
-      "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-      "seasonId": "2025-26",
-      "logoId": null,
-      "externalId": "1f0423c9-0098-6bc4-88b3-02347ea6fef5",
-      "isPublic": true,
-      "isSanctioned": true,
-      "homeColor": "BLEU",
-      "awayColor": "BLANC",
-      "id": 126543,
-      "createdAt": "2025-06-05T18:40:35.000Z",
-      "updatedAt": "2025-11-20T15:24:06.356Z",
-      "officeId": 6128,
-      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/teams/1f0423c9-0098-6bc4-88b3-02347ea6fef5/logos/1f0423c9-0088-645e-b564-02347ea6fef5.png"
-    },
-    "externalProviders": [],
-    "isLive": false,
-    "score": {
-      "126540": 2,
-      "126543": 3
-    }
-  },
-  {
-    "number": "7132",
-    "date": "2026-01-11",
-    "startTime": "2026-01-11T23:00:00.000Z",
-    "endTime": "2026-01-12T00:30:00.000Z",
-    "timezone": "America/Toronto",
-    "division": "Junior",
-    "gender": "Integrated",
-    "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-    "seasonId": "2025-26",
-    "arenaId": 10465,
-    "scheduleId": 183360,
-    "groupId": null,
-    "crossGroupId": null,
-    "crossScheduleId": null,
-    "officeId": 6150,
-    "homeTeamId": 126539,
-    "awayTeamId": 126544,
-    "homeTeamComment": null,
-    "awayTeamComment": null,
-    "status": "Active",
-    "comments": null,
-    "isApproved": true,
-    "isCertified": false,
-    "spectators": null,
-    "actualStartTime": null,
-    "actualEndTime": null,
-    "id": 720514,
-    "category": {
-      "id": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-      "name": "Junior C",
-      "divisionId": "f184a861-f620-4a73-8f6c-c972c6470e3e",
-      "gender": "Integrated",
-      "classId": "81d91d4c-d9ca-40eb-a248-359bc5f0257b",
-      "order": 306,
-      "i18n": {
-        "fr": {
-          "name": "Junior C"
-        }
-      },
-      "nameFr": "Junior C",
-      "externalId": "1eebee5e-8df0-6ca0-a4a7-062a1ab93798",
-      "division": {
-        "id": "f184a861-f620-4a73-8f6c-c972c6470e3e",
-        "name": "Junior",
-        "shortName": "Junior",
-        "order": 23,
-        "i18n": {
-          "fr": {
-            "name": "Junior",
-            "shortName": "Junior"
-          }
-        }
-      },
-      "class": {
-        "id": "81d91d4c-d9ca-40eb-a248-359bc5f0257b",
-        "name": "C",
-        "shortName": "C",
-        "order": 6,
-        "i18n": {
-          "fr": {
-            "name": "C",
-            "shortName": "C"
-          }
-        }
-      }
-    },
-    "teamStats": [
-      {
-        "gameId": 720514,
-        "teamId": 126544,
-        "schemaId": "8f056ea1-457e-4fc6-b9f7-86e4e04eb058",
-        "id": 1178207,
-        "pk": 5,
-        "pim": 12,
-        "pko": 5,
-        "ppg": 0,
-        "ppo": 3,
-        "points": 1,
-        "goalFor": 2,
-        "shotFor": null,
-        "pointsPct": 0.667,
-        "gameResult": "tie",
-        "goalAgainst": 2,
-        "shotAgainst": null,
-        "winLossType": "regulation",
-        "sportsmanship": 1,
-        "sportsmanshipPim": {
-          "totalPim": 12,
-          "regularTimePim": 12
-        },
-        "penaltyOccurrences": 6
-      },
-      {
-        "gameId": 720514,
-        "teamId": 126539,
-        "schemaId": "8f056ea1-457e-4fc6-b9f7-86e4e04eb058",
-        "id": 1178208,
-        "pk": 3,
-        "pim": 8,
-        "pko": 3,
-        "ppg": 0,
-        "ppo": 5,
-        "points": 1,
-        "goalFor": 2,
-        "shotFor": null,
-        "pointsPct": 0.667,
-        "gameResult": "tie",
-        "goalAgainst": 2,
-        "shotAgainst": null,
-        "winLossType": "regulation",
-        "sportsmanship": 1,
-        "sportsmanshipPim": {
-          "totalPim": 6,
-          "regularTimePim": 6
-        },
-        "penaltyOccurrences": 4
-      }
-    ],
-    "surface": {
-      "venueId": "26b3c516-eab8-4c55-bea8-92128727370e",
-      "parentId": null,
-      "name": "Glace 1",
-      "fraction": null,
-      "alias": "LORETTEVILLE",
-      "timezone": "America/Toronto",
-      "sports": [
-        "Hockey"
-      ],
-      "type": "Ice",
-      "size": "M",
-      "path": "10465",
-      "externalId": "c58e6af2-e2ce-472e-9d44-66fe0545f936",
-      "id": 10465,
-      "venue": {
-        "id": "26b3c516-eab8-4c55-bea8-92128727370e",
-        "name": "Colisée de Loretteville",
-        "address": "86 Bd des Étudiants",
-        "city": "Québec",
-        "region": "QC",
-        "postalCode": "G2A 2M7",
-        "country": "Canada",
-        "alias": null,
-        "timezone": "America/Toronto",
-        "externalId": "7ebc78d8-ee80-4cdb-84b5-c1141b59c32d"
-      }
-    },
-    "office": {
-      "name": "LIGUE HOCKEY MINEUR CAPITALE NATIONALE",
-      "type": "League",
-      "parentId": 6106,
-      "path": "467.2377.6106.6150",
-      "logoId": null,
-      "externalId": "1ef5f007-aa45-654a-a2df-0277dbbceb5f",
-      "timezone": "America/Toronto",
-      "isExternalTeam": false,
-      "color": "#000f46",
-      "slug": "ligue-hockey-mineur-capitale-nationale",
-      "id": 6150,
-      "createdAt": "2024-10-17T15:31:04.411Z",
-      "updatedAt": "2025-10-23T17:50:06.133Z",
-      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1ef5f007-aa45-654a-a2df-0277dbbceb5f/logos/1ef5f007-aa5c-6150-95ef-0277dbbceb5f.png"
-    },
-    "awayTeam": {
-      "name": "BÉLIERS QUÉBEC-CENTRE",
-      "shortName": "BÉLIERS QUÉBEC-CENTRE",
-      "division": "Junior",
-      "gender": "Integrated",
-      "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-      "seasonId": "2025-26",
-      "logoId": null,
-      "externalId": "1f0423c9-00a6-63be-aa91-02347ea6fef5",
-      "isPublic": true,
-      "isSanctioned": true,
-      "homeColor": "BLANC",
-      "awayColor": "BLEU",
-      "id": 126544,
-      "createdAt": "2025-06-05T18:40:35.000Z",
-      "updatedAt": "2026-01-22T20:13:21.981Z",
-      "officeId": 6128,
-      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/teams/1f0423c9-00a6-63be-aa91-02347ea6fef5/logos/1f0423c9-0098-6d68-958b-02347ea6fef5.png"
-    },
-    "homeTeam": {
-      "name": "PATRIOTES  QUÉBEC-CENTRE",
-      "shortName": "PATRIOTES  QUÉBEC-CENTRE",
-      "division": "Junior",
-      "gender": "Integrated",
-      "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-      "seasonId": "2025-26",
-      "logoId": null,
-      "externalId": "1f0423c9-00b6-6f3e-aabd-02347ea6fef5",
-      "isPublic": true,
-      "isSanctioned": true,
-      "homeColor": "BLANC",
-      "awayColor": "BLEU",
-      "id": 126539,
-      "createdAt": "2025-06-05T18:40:35.000Z",
-      "updatedAt": "2026-01-05T15:30:53.741Z",
-      "officeId": 6128,
-      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/teams/1f0423c9-00b6-6f3e-aabd-02347ea6fef5/logos/1f0423c9-00a6-6580-9e7f-02347ea6fef5.png"
-    },
-    "externalProviders": [],
-    "isLive": false,
-    "score": {
-      "126539": 2,
-      "126544": 2
-    }
-  },
-  {
-    "number": "7133",
-    "date": "2026-01-11",
-    "startTime": "2026-01-11T23:30:00.000Z",
-    "endTime": "2026-01-12T01:00:00.000Z",
-    "timezone": "America/Toronto",
-    "division": "Junior",
-    "gender": "Integrated",
-    "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-    "seasonId": "2025-26",
-    "arenaId": 10647,
-    "scheduleId": 183360,
-    "groupId": null,
-    "crossGroupId": null,
-    "crossScheduleId": null,
-    "officeId": 6150,
-    "homeTeamId": 126537,
-    "awayTeamId": 126536,
-    "homeTeamComment": null,
-    "awayTeamComment": null,
-    "status": "Active",
-    "comments": null,
-    "isApproved": true,
-    "isCertified": false,
-    "spectators": null,
-    "actualStartTime": null,
-    "actualEndTime": null,
-    "id": 721626,
-    "category": {
-      "id": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-      "name": "Junior C",
-      "divisionId": "f184a861-f620-4a73-8f6c-c972c6470e3e",
-      "gender": "Integrated",
-      "classId": "81d91d4c-d9ca-40eb-a248-359bc5f0257b",
-      "order": 306,
-      "i18n": {
-        "fr": {
-          "name": "Junior C"
-        }
-      },
-      "nameFr": "Junior C",
-      "externalId": "1eebee5e-8df0-6ca0-a4a7-062a1ab93798",
-      "division": {
-        "id": "f184a861-f620-4a73-8f6c-c972c6470e3e",
-        "name": "Junior",
-        "shortName": "Junior",
-        "order": 23,
-        "i18n": {
-          "fr": {
-            "name": "Junior",
-            "shortName": "Junior"
-          }
-        }
-      },
-      "class": {
-        "id": "81d91d4c-d9ca-40eb-a248-359bc5f0257b",
-        "name": "C",
-        "shortName": "C",
-        "order": 6,
-        "i18n": {
-          "fr": {
-            "name": "C",
-            "shortName": "C"
-          }
-        }
-      }
-    },
-    "teamStats": [
-      {
-        "gameId": 721626,
-        "teamId": 126536,
-        "schemaId": "8f056ea1-457e-4fc6-b9f7-86e4e04eb058",
-        "id": 1178351,
-        "pk": 6,
-        "pim": 26,
-        "pko": 8,
-        "ppg": 1,
-        "ppo": 4,
-        "points": 2,
-        "goalFor": 6,
-        "shotFor": null,
-        "pointsPct": 1,
-        "gameResult": "win",
-        "goalAgainst": 3,
-        "shotAgainst": null,
-        "winLossType": "regulation",
-        "sportsmanship": 1,
-        "sportsmanshipPim": {
-          "totalPim": 18,
-          "regularTimePim": 18
-        },
-        "penaltyOccurrences": 13
-      },
-      {
-        "gameId": 721626,
-        "teamId": 126537,
-        "schemaId": "8f056ea1-457e-4fc6-b9f7-86e4e04eb058",
-        "id": 1178352,
-        "pk": 3,
-        "pim": 28,
-        "pko": 4,
-        "ppg": 2,
-        "ppo": 8,
-        "points": 0,
-        "goalFor": 3,
-        "shotFor": null,
-        "pointsPct": 0,
-        "gameResult": "loss",
-        "goalAgainst": 6,
-        "shotAgainst": null,
-        "winLossType": "regulation",
-        "sportsmanship": 0,
-        "sportsmanshipPim": {
-          "totalPim": 24,
-          "regularTimePim": 24
-        },
-        "penaltyOccurrences": 10
-      }
-    ],
-    "surface": {
-      "venueId": "8696602d-a236-486c-b226-a87b14784eb1",
-      "parentId": null,
-      "name": "Glace A",
-      "fraction": null,
-      "alias": "VAL-BELAIR-A",
-      "timezone": "America/Toronto",
-      "sports": [
-        "Hockey"
-      ],
-      "type": "Ice",
-      "size": "M",
-      "path": "10647",
-      "externalId": "d02a0b1a-36f9-4845-8a9c-5cf6256bacdc",
-      "id": 10647,
-      "venue": {
-        "id": "8696602d-a236-486c-b226-a87b14784eb1",
-        "name": "Aréna des Deux Glaces",
-        "address": "1515 Rue de l'Innovation",
-        "city": "Québec",
-        "region": "QC",
-        "postalCode": "G3K 2P9",
-        "country": "Canada",
-        "alias": null,
-        "timezone": "America/Toronto",
-        "externalId": "11813310-6b7d-4377-abed-2faabbe52d44"
-      }
-    },
-    "office": {
-      "name": "LIGUE HOCKEY MINEUR CAPITALE NATIONALE",
-      "type": "League",
-      "parentId": 6106,
-      "path": "467.2377.6106.6150",
-      "logoId": null,
-      "externalId": "1ef5f007-aa45-654a-a2df-0277dbbceb5f",
-      "timezone": "America/Toronto",
-      "isExternalTeam": false,
-      "color": "#000f46",
-      "slug": "ligue-hockey-mineur-capitale-nationale",
-      "id": 6150,
-      "createdAt": "2024-10-17T15:31:04.411Z",
-      "updatedAt": "2025-10-23T17:50:06.133Z",
-      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1ef5f007-aa45-654a-a2df-0277dbbceb5f/logos/1ef5f007-aa5c-6150-95ef-0277dbbceb5f.png"
-    },
-    "awayTeam": {
-      "name": "DIABLOS DPR",
-      "shortName": "DIABLOS DPR",
-      "division": "Junior",
-      "gender": "Integrated",
-      "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-      "seasonId": "2025-26",
-      "logoId": null,
-      "externalId": "1f0423c9-0102-62b8-9b63-02347ea6fef5",
-      "isPublic": true,
-      "isSanctioned": true,
-      "homeColor": "NOIR",
-      "awayColor": "BLANC",
-      "id": 126536,
-      "createdAt": "2025-06-05T18:40:35.000Z",
-      "updatedAt": "2026-01-15T23:27:14.423Z",
-      "officeId": 6110,
-      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1eb5dab1-23ce-6170-bb0d-06ba8f7ba4e0/logos/1ec3724a-51d4-690a-8e1f-061d9f805e6e.png"
-    },
-    "homeTeam": {
-      "name": "CHEVALIERS 2 VBVC",
-      "shortName": "CHEVALIERS 2 VBVC",
-      "division": "Junior",
-      "gender": "Integrated",
-      "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-      "seasonId": "2025-26",
-      "logoId": null,
-      "externalId": "1f0423c9-00e4-6812-9706-02347ea6fef5",
-      "isPublic": true,
-      "isSanctioned": true,
-      "homeColor": "Bleu",
-      "awayColor": "Blanc",
-      "id": 126537,
-      "createdAt": "2025-06-05T18:40:35.000Z",
-      "updatedAt": "2025-12-04T17:58:24.739Z",
-      "officeId": 6121,
-      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1eb5dab5-7afd-6e06-ba78-06ba8f7ba4e0/logos/1ebc017d-0db5-669c-b98d-06213da53fb2.png"
-    },
-    "externalProviders": [],
-    "isLive": false,
-    "score": {
-      "126536": 6,
-      "126537": 3
-    }
-  },
-  {
-    "number": "7134",
-    "date": "2026-01-12",
-    "startTime": "2026-01-13T01:30:00.000Z",
-    "endTime": "2026-01-13T03:00:00.000Z",
-    "timezone": "America/Toronto",
-    "division": "Junior",
-    "gender": "Integrated",
-    "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-    "seasonId": "2025-26",
-    "arenaId": 10501,
-    "scheduleId": 183360,
-    "groupId": null,
-    "crossGroupId": null,
-    "crossScheduleId": null,
-    "officeId": 6150,
-    "homeTeamId": 141478,
-    "awayTeamId": 145567,
-    "homeTeamComment": null,
-    "awayTeamComment": null,
-    "status": "Active",
-    "comments": null,
-    "isApproved": true,
-    "isCertified": false,
-    "spectators": null,
-    "actualStartTime": null,
-    "actualEndTime": null,
-    "id": 720424,
-    "category": {
-      "id": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-      "name": "Junior C",
-      "divisionId": "f184a861-f620-4a73-8f6c-c972c6470e3e",
-      "gender": "Integrated",
-      "classId": "81d91d4c-d9ca-40eb-a248-359bc5f0257b",
-      "order": 306,
-      "i18n": {
-        "fr": {
-          "name": "Junior C"
-        }
-      },
-      "nameFr": "Junior C",
-      "externalId": "1eebee5e-8df0-6ca0-a4a7-062a1ab93798",
-      "division": {
-        "id": "f184a861-f620-4a73-8f6c-c972c6470e3e",
-        "name": "Junior",
-        "shortName": "Junior",
-        "order": 23,
-        "i18n": {
-          "fr": {
-            "name": "Junior",
-            "shortName": "Junior"
-          }
-        }
-      },
-      "class": {
-        "id": "81d91d4c-d9ca-40eb-a248-359bc5f0257b",
-        "name": "C",
-        "shortName": "C",
-        "order": 6,
-        "i18n": {
-          "fr": {
-            "name": "C",
-            "shortName": "C"
-          }
-        }
-      }
-    },
-    "teamStats": [
-      {
-        "gameId": 720424,
-        "teamId": 141478,
-        "schemaId": "8f056ea1-457e-4fc6-b9f7-86e4e04eb058",
-        "id": 1179663,
-        "pk": 6,
-        "pim": 12,
-        "pko": 8,
-        "ppg": 1,
-        "ppo": 1,
-        "points": 2,
-        "goalFor": 9,
-        "shotFor": 27,
-        "pointsPct": 1,
-        "gameResult": "win",
-        "goalAgainst": 6,
-        "shotAgainst": 35,
-        "winLossType": "regulation",
-        "sportsmanship": 1,
-        "sportsmanshipPim": {
-          "totalPim": 10,
-          "regularTimePim": 10
-        },
-        "penaltyOccurrences": 6
-      },
-      {
-        "gameId": 720424,
-        "teamId": 145567,
-        "schemaId": "8f056ea1-457e-4fc6-b9f7-86e4e04eb058",
-        "id": 1179664,
-        "pk": 0,
-        "pim": 2,
-        "pko": 1,
-        "ppg": 2,
-        "ppo": 8,
-        "points": 0,
-        "goalFor": 6,
-        "shotFor": 35,
-        "pointsPct": 0.333,
-        "gameResult": "loss",
-        "goalAgainst": 9,
-        "shotAgainst": 27,
-        "winLossType": "regulation",
-        "sportsmanship": 1,
-        "sportsmanshipPim": {
-          "totalPim": 2,
-          "regularTimePim": 2
-        },
-        "penaltyOccurrences": 1
-      }
-    ],
-    "surface": {
-      "venueId": "0338deba-05da-4fd5-8948-e2cc4476019b",
-      "parentId": null,
-      "name": "Glace A",
-      "fraction": null,
-      "alias": "DESMAURES-A",
-      "timezone": "America/Toronto",
-      "sports": [
-        "Hockey"
-      ],
-      "type": "Ice",
-      "size": "M",
-      "path": "10501",
-      "externalId": "44721a15-90dc-4008-9715-26765b4053a9",
-      "id": 10501,
-      "venue": {
-        "id": "0338deba-05da-4fd5-8948-e2cc4476019b",
-        "name": "Complexe sportif de Saint-Augustin-de-Desmaures",
-        "address": "230 Rte de Fossambault",
-        "city": "Saint-Augustin-de-Desmaures",
-        "region": "QC",
-        "postalCode": "G3A 0R3",
-        "country": "Canada",
-        "alias": null,
-        "timezone": "America/Toronto",
-        "externalId": "73d35cb3-65ce-47fb-b23d-889118077d20"
-      }
-    },
-    "office": {
-      "name": "LIGUE HOCKEY MINEUR CAPITALE NATIONALE",
-      "type": "League",
-      "parentId": 6106,
-      "path": "467.2377.6106.6150",
-      "logoId": null,
-      "externalId": "1ef5f007-aa45-654a-a2df-0277dbbceb5f",
-      "timezone": "America/Toronto",
-      "isExternalTeam": false,
-      "color": "#000f46",
-      "slug": "ligue-hockey-mineur-capitale-nationale",
-      "id": 6150,
-      "createdAt": "2024-10-17T15:31:04.411Z",
-      "updatedAt": "2025-10-23T17:50:06.133Z",
-      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1ef5f007-aa45-654a-a2df-0277dbbceb5f/logos/1ef5f007-aa5c-6150-95ef-0277dbbceb5f.png"
-    },
-    "awayTeam": {
-      "name": "FAUCONS BEAUPORT",
-      "shortName": "FAUCONS",
-      "division": "Junior",
-      "gender": "Integrated",
-      "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-      "seasonId": "2025-26",
-      "logoId": null,
-      "externalId": "1f09ae43-ebbc-6790-a285-0618961c04a3",
-      "isPublic": true,
-      "isSanctioned": true,
-      "homeColor": "JAUNE",
-      "awayColor": "BLANC",
-      "id": 145567,
-      "createdAt": "2025-09-26T14:22:34.000Z",
-      "updatedAt": "2025-11-18T16:34:33.341Z",
-      "officeId": 6126,
-      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1eb5dab7-4050-6680-bd9a-06ba8f7ba4e0/logos/1ebc017d-1631-6b04-8b96-0682f9c65d50.png"
-    },
-    "homeTeam": {
-      "name": "ROYAUX 2 CRSA",
-      "shortName": "ROYAUX 2 CRSA",
-      "division": "Junior",
-      "gender": "Integrated",
-      "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-      "seasonId": "2025-26",
-      "logoId": null,
-      "externalId": "1f08e6a9-8f1f-6f62-a5e4-028667cee5ff",
-      "isPublic": true,
-      "isSanctioned": true,
-      "homeColor": "Bleu",
-      "awayColor": "Blanc",
-      "id": 141478,
-      "createdAt": "2025-09-10T17:21:33.000Z",
-      "updatedAt": "2025-11-18T20:37:51.801Z",
-      "officeId": 6109,
-      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1eb5dab0-29ff-69d2-ba7d-06ba8f7ba4e0/logos/1ebc017c-f94a-675c-b6e3-020ca418dc48.png"
-    },
-    "externalProviders": [],
-    "isLive": false,
-    "score": {
-      "141478": 9,
-      "145567": 6
-    }
-  },
-  {
-    "number": "7135",
-    "date": "2026-01-15",
-    "startTime": "2026-01-16T00:00:00.000Z",
-    "endTime": "2026-01-16T01:30:00.000Z",
-    "timezone": "America/Toronto",
-    "division": "Junior",
-    "gender": "Integrated",
-    "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-    "seasonId": "2025-26",
-    "arenaId": 10231,
-    "scheduleId": 183360,
-    "groupId": null,
-    "crossGroupId": null,
-    "crossScheduleId": null,
-    "officeId": 6150,
-    "homeTeamId": 126550,
-    "awayTeamId": 126413,
-    "homeTeamComment": null,
-    "awayTeamComment": null,
-    "status": "Active",
-    "comments": null,
-    "isApproved": true,
-    "isCertified": false,
-    "spectators": null,
-    "actualStartTime": null,
-    "actualEndTime": null,
-    "id": 720430,
-    "category": {
-      "id": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-      "name": "Junior C",
-      "divisionId": "f184a861-f620-4a73-8f6c-c972c6470e3e",
-      "gender": "Integrated",
-      "classId": "81d91d4c-d9ca-40eb-a248-359bc5f0257b",
-      "order": 306,
-      "i18n": {
-        "fr": {
-          "name": "Junior C"
-        }
-      },
-      "nameFr": "Junior C",
-      "externalId": "1eebee5e-8df0-6ca0-a4a7-062a1ab93798",
-      "division": {
-        "id": "f184a861-f620-4a73-8f6c-c972c6470e3e",
-        "name": "Junior",
-        "shortName": "Junior",
-        "order": 23,
-        "i18n": {
-          "fr": {
-            "name": "Junior",
-            "shortName": "Junior"
-          }
-        }
-      },
-      "class": {
-        "id": "81d91d4c-d9ca-40eb-a248-359bc5f0257b",
-        "name": "C",
-        "shortName": "C",
-        "order": 6,
-        "i18n": {
-          "fr": {
-            "name": "C",
-            "shortName": "C"
-          }
-        }
-      }
-    },
-    "teamStats": [
-      {
-        "gameId": 720430,
-        "teamId": 126413,
-        "schemaId": "8f056ea1-457e-4fc6-b9f7-86e4e04eb058",
-        "id": 1181820,
-        "pk": 2,
-        "pim": 8,
-        "pko": 4,
-        "ppg": 1,
-        "ppo": 3,
-        "points": 0,
-        "goalFor": 3,
-        "shotFor": null,
-        "pointsPct": 0.333,
-        "gameResult": "loss",
-        "goalAgainst": 6,
-        "shotAgainst": null,
-        "winLossType": "regulation",
-        "sportsmanship": 1,
-        "sportsmanshipPim": {
-          "totalPim": 2,
-          "regularTimePim": 2
-        },
-        "penaltyOccurrences": 4
-      },
-      {
-        "gameId": 720430,
-        "teamId": 126550,
-        "schemaId": "8f056ea1-457e-4fc6-b9f7-86e4e04eb058",
-        "id": 1181821,
-        "pk": 2,
-        "pim": 8,
-        "pko": 3,
-        "ppg": 2,
-        "ppo": 4,
-        "points": 2,
-        "goalFor": 6,
-        "shotFor": null,
-        "pointsPct": 1,
-        "gameResult": "win",
-        "goalAgainst": 3,
-        "shotAgainst": null,
-        "winLossType": "regulation",
-        "sportsmanship": 1,
-        "sportsmanshipPim": {
-          "totalPim": 6,
-          "regularTimePim": 6
-        },
-        "penaltyOccurrences": 4
-      }
-    ],
-    "surface": {
-      "venueId": "5f7dd494-123a-4135-bd94-b7916923f3bb",
-      "parentId": null,
-      "name": "Glace 1",
-      "fraction": null,
-      "alias": "ARPIDROME",
-      "timezone": "America/Toronto",
-      "sports": [
-        "Hockey"
-      ],
-      "type": "Ice",
-      "size": "M",
-      "path": "10231",
-      "externalId": "5c7cfd5f-1e1e-49e2-a875-d3525842b770",
-      "id": 10231,
-      "venue": {
-        "id": "5f7dd494-123a-4135-bd94-b7916923f3bb",
-        "name": "Arpidrome Charlesbourg",
-        "address": "750 Rue de la Sorbonne",
-        "city": "Québec",
-        "region": "QC",
-        "postalCode": "G1H 1H1",
-        "country": "Canada",
-        "alias": null,
-        "timezone": "America/Toronto",
-        "externalId": "53c43b97-1b3d-4bf8-8800-09fdf6e6a16a"
-      }
-    },
-    "office": {
-      "name": "LIGUE HOCKEY MINEUR CAPITALE NATIONALE",
-      "type": "League",
-      "parentId": 6106,
-      "path": "467.2377.6106.6150",
-      "logoId": null,
-      "externalId": "1ef5f007-aa45-654a-a2df-0277dbbceb5f",
-      "timezone": "America/Toronto",
-      "isExternalTeam": false,
-      "color": "#000f46",
-      "slug": "ligue-hockey-mineur-capitale-nationale",
-      "id": 6150,
-      "createdAt": "2024-10-17T15:31:04.411Z",
-      "updatedAt": "2025-10-23T17:50:06.133Z",
-      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1ef5f007-aa45-654a-a2df-0277dbbceb5f/logos/1ef5f007-aa5c-6150-95ef-0277dbbceb5f.png"
-    },
-    "awayTeam": {
-      "name": "WAPITIS CHARLESBOURG",
-      "shortName": "WAPITIS CHARLESBOURG",
-      "division": "Junior",
-      "gender": "Integrated",
-      "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-      "seasonId": "2025-26",
-      "logoId": null,
-      "externalId": "1f0423c9-08e1-6b8c-9d74-02347ea6fef5",
-      "isPublic": true,
-      "isSanctioned": true,
-      "homeColor": "ROUGE",
-      "awayColor": "BLANC",
-      "id": 126413,
-      "createdAt": "2025-06-05T18:40:35.000Z",
-      "updatedAt": "2026-01-23T17:41:05.741Z",
-      "officeId": 6122,
-      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/teams/1f0423c9-08e1-6b8c-9d74-02347ea6fef5/logos/1f0423c9-08d3-6924-a13b-02347ea6fef5.jpg"
-    },
-    "homeTeam": {
-      "name": "CARIBOUS CHARLESBOURG",
-      "shortName": "CARIBOUS CHARLESBOURG",
-      "division": "Junior",
-      "gender": "Integrated",
-      "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-      "seasonId": "2025-26",
-      "logoId": null,
-      "externalId": "1f0423c9-0088-6238-989e-02347ea6fef5",
-      "isPublic": true,
-      "isSanctioned": true,
-      "homeColor": "ROUGE",
-      "awayColor": "BLANC",
-      "id": 126550,
-      "createdAt": "2025-06-05T18:40:35.000Z",
-      "updatedAt": "2025-11-04T17:33:29.596Z",
-      "officeId": 6122,
-      "logoUrl": "https://cdn.hcr.spordle.com/teams/1ef21be2-5d57-63d4-8479-06f606e85d2d/logos/1ef21be2-5d44-66e4-9f71-06f606e85d2d.png"
-    },
-    "externalProviders": [],
-    "isLive": false,
-    "score": {
-      "126413": 3,
-      "126550": 6
-    }
-  },
-  {
-    "number": "7136",
-    "date": "2026-01-15",
-    "startTime": "2026-01-16T01:30:00.000Z",
-    "endTime": "2026-01-16T03:00:00.000Z",
-    "timezone": "America/Toronto",
-    "division": "Junior",
-    "gender": "Integrated",
-    "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-    "seasonId": "2025-26",
-    "arenaId": 10231,
-    "scheduleId": 183360,
-    "groupId": null,
-    "crossGroupId": null,
-    "crossScheduleId": null,
-    "officeId": 6150,
-    "homeTeamId": 126412,
-    "awayTeamId": 141479,
-    "homeTeamComment": null,
-    "awayTeamComment": null,
-    "status": "Active",
-    "comments": null,
-    "isApproved": true,
-    "isCertified": false,
-    "spectators": null,
-    "actualStartTime": null,
-    "actualEndTime": null,
-    "id": 720429,
-    "category": {
-      "id": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-      "name": "Junior C",
-      "divisionId": "f184a861-f620-4a73-8f6c-c972c6470e3e",
-      "gender": "Integrated",
-      "classId": "81d91d4c-d9ca-40eb-a248-359bc5f0257b",
-      "order": 306,
-      "i18n": {
-        "fr": {
-          "name": "Junior C"
-        }
-      },
-      "nameFr": "Junior C",
-      "externalId": "1eebee5e-8df0-6ca0-a4a7-062a1ab93798",
-      "division": {
-        "id": "f184a861-f620-4a73-8f6c-c972c6470e3e",
-        "name": "Junior",
-        "shortName": "Junior",
-        "order": 23,
-        "i18n": {
-          "fr": {
-            "name": "Junior",
-            "shortName": "Junior"
-          }
-        }
-      },
-      "class": {
-        "id": "81d91d4c-d9ca-40eb-a248-359bc5f0257b",
-        "name": "C",
-        "shortName": "C",
-        "order": 6,
-        "i18n": {
-          "fr": {
-            "name": "C",
-            "shortName": "C"
-          }
-        }
-      }
-    },
-    "teamStats": [
-      {
-        "gameId": 720429,
-        "teamId": 141479,
-        "schemaId": "8f056ea1-457e-4fc6-b9f7-86e4e04eb058",
-        "id": 1181944,
-        "pk": 3,
-        "pim": 10,
-        "pko": 5,
-        "ppg": 1,
-        "ppo": 3,
-        "points": 2,
-        "goalFor": 4,
-        "shotFor": null,
-        "pointsPct": 1,
-        "gameResult": "win",
-        "goalAgainst": 3,
-        "shotAgainst": null,
-        "winLossType": "regulation",
-        "sportsmanship": 1,
-        "sportsmanshipPim": {
-          "totalPim": 4,
-          "regularTimePim": 4
-        },
-        "penaltyOccurrences": 5
-      },
-      {
-        "gameId": 720429,
-        "teamId": 126412,
-        "schemaId": "8f056ea1-457e-4fc6-b9f7-86e4e04eb058",
-        "id": 1181945,
-        "pk": 2,
-        "pim": 6,
-        "pko": 3,
-        "ppg": 2,
-        "ppo": 5,
-        "points": 0,
-        "goalFor": 3,
-        "shotFor": null,
-        "pointsPct": 0.333,
-        "gameResult": "loss",
-        "goalAgainst": 4,
-        "shotAgainst": null,
-        "winLossType": "regulation",
-        "sportsmanship": 1,
-        "sportsmanshipPim": {
-          "totalPim": 4,
-          "regularTimePim": 4
-        },
-        "penaltyOccurrences": 3
-      }
-    ],
-    "surface": {
-      "venueId": "5f7dd494-123a-4135-bd94-b7916923f3bb",
-      "parentId": null,
-      "name": "Glace 1",
-      "fraction": null,
-      "alias": "ARPIDROME",
-      "timezone": "America/Toronto",
-      "sports": [
-        "Hockey"
-      ],
-      "type": "Ice",
-      "size": "M",
-      "path": "10231",
-      "externalId": "5c7cfd5f-1e1e-49e2-a875-d3525842b770",
-      "id": 10231,
-      "venue": {
-        "id": "5f7dd494-123a-4135-bd94-b7916923f3bb",
-        "name": "Arpidrome Charlesbourg",
-        "address": "750 Rue de la Sorbonne",
-        "city": "Québec",
-        "region": "QC",
-        "postalCode": "G1H 1H1",
-        "country": "Canada",
-        "alias": null,
-        "timezone": "America/Toronto",
-        "externalId": "53c43b97-1b3d-4bf8-8800-09fdf6e6a16a"
-      }
-    },
-    "office": {
-      "name": "LIGUE HOCKEY MINEUR CAPITALE NATIONALE",
-      "type": "League",
-      "parentId": 6106,
-      "path": "467.2377.6106.6150",
-      "logoId": null,
-      "externalId": "1ef5f007-aa45-654a-a2df-0277dbbceb5f",
-      "timezone": "America/Toronto",
-      "isExternalTeam": false,
-      "color": "#000f46",
-      "slug": "ligue-hockey-mineur-capitale-nationale",
-      "id": 6150,
-      "createdAt": "2024-10-17T15:31:04.411Z",
-      "updatedAt": "2025-10-23T17:50:06.133Z",
-      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1ef5f007-aa45-654a-a2df-0277dbbceb5f/logos/1ef5f007-aa5c-6150-95ef-0277dbbceb5f.png"
-    },
-    "awayTeam": {
-      "name": "ROYAUX 1 CRSA",
-      "shortName": "ROYAUX 1 CRSA",
-      "division": "Junior",
-      "gender": "Integrated",
-      "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-      "seasonId": "2025-26",
-      "logoId": null,
-      "externalId": "1f08e6a9-8f27-6866-8060-06d853421783",
-      "isPublic": true,
-      "isSanctioned": true,
-      "homeColor": "Bleu",
-      "awayColor": "Blanc",
-      "id": 141479,
-      "createdAt": "2025-09-10T17:21:33.000Z",
-      "updatedAt": "2026-01-06T19:51:24.603Z",
-      "officeId": 6109,
-      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1eb5dab0-29ff-69d2-ba7d-06ba8f7ba4e0/logos/1ebc017c-f94a-675c-b6e3-020ca418dc48.png"
-    },
-    "homeTeam": {
-      "name": "BUCKS CHARLESBOURG",
-      "shortName": "BUCKS CHARLESBOURG",
-      "division": "Junior",
-      "gender": "Integrated",
-      "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-      "seasonId": "2025-26",
-      "logoId": null,
-      "externalId": "1f0423c9-08d3-6622-8262-02347ea6fef5",
-      "isPublic": true,
-      "isSanctioned": true,
-      "homeColor": "ROUGE",
-      "awayColor": "BLANC",
-      "id": 126412,
-      "createdAt": "2025-06-05T18:40:35.000Z",
-      "updatedAt": "2026-01-06T20:16:52.993Z",
-      "officeId": 6122,
-      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/teams/1f0423c9-08d3-6622-8262-02347ea6fef5/logos/1f0423c9-08c3-6646-80a1-02347ea6fef5.jpg"
-    },
-    "externalProviders": [],
-    "isLive": false,
-    "score": {
-      "126412": 3,
-      "141479": 4
-    }
-  },
-  {
-    "number": "7137",
-    "date": "2026-01-16",
-    "startTime": "2026-01-17T01:00:00.000Z",
-    "endTime": "2026-01-17T02:30:00.000Z",
-    "timezone": "America/Toronto",
-    "division": "Junior",
-    "gender": "Integrated",
-    "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-    "seasonId": "2025-26",
-    "arenaId": 10459,
-    "scheduleId": 183360,
-    "groupId": null,
-    "crossGroupId": null,
-    "crossScheduleId": null,
-    "officeId": 6150,
-    "homeTeamId": 126536,
-    "awayTeamId": 126544,
-    "homeTeamComment": null,
-    "awayTeamComment": null,
-    "status": "Active",
-    "comments": null,
-    "isApproved": true,
-    "isCertified": false,
-    "spectators": null,
-    "actualStartTime": null,
-    "actualEndTime": null,
-    "id": 720434,
-    "category": {
-      "id": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-      "name": "Junior C",
-      "divisionId": "f184a861-f620-4a73-8f6c-c972c6470e3e",
-      "gender": "Integrated",
-      "classId": "81d91d4c-d9ca-40eb-a248-359bc5f0257b",
-      "order": 306,
-      "i18n": {
-        "fr": {
-          "name": "Junior C"
-        }
-      },
-      "nameFr": "Junior C",
-      "externalId": "1eebee5e-8df0-6ca0-a4a7-062a1ab93798",
-      "division": {
-        "id": "f184a861-f620-4a73-8f6c-c972c6470e3e",
-        "name": "Junior",
-        "shortName": "Junior",
-        "order": 23,
-        "i18n": {
-          "fr": {
-            "name": "Junior",
-            "shortName": "Junior"
-          }
-        }
-      },
-      "class": {
-        "id": "81d91d4c-d9ca-40eb-a248-359bc5f0257b",
-        "name": "C",
-        "shortName": "C",
-        "order": 6,
-        "i18n": {
-          "fr": {
-            "name": "C",
-            "shortName": "C"
-          }
-        }
-      }
-    },
-    "teamStats": [
-      {
-        "gameId": 720434,
-        "teamId": 126536,
-        "schemaId": "8f056ea1-457e-4fc6-b9f7-86e4e04eb058",
-        "id": 1183972,
-        "pk": 1,
-        "pim": 8,
-        "pko": 3,
-        "ppg": 1,
-        "ppo": 3,
-        "points": 1,
-        "goalFor": 3,
-        "shotFor": null,
-        "pointsPct": 0.667,
-        "gameResult": "tie",
-        "goalAgainst": 3,
-        "shotAgainst": null,
-        "winLossType": "regulation",
-        "sportsmanship": 1,
-        "sportsmanshipPim": {
-          "totalPim": 6,
-          "regularTimePim": 6
-        },
-        "penaltyOccurrences": 4
-      },
-      {
-        "gameId": 720434,
-        "teamId": 126544,
-        "schemaId": "8f056ea1-457e-4fc6-b9f7-86e4e04eb058",
-        "id": 1183973,
-        "pk": 2,
-        "pim": 8,
-        "pko": 3,
-        "ppg": 2,
-        "ppo": 3,
-        "points": 1,
-        "goalFor": 3,
-        "shotFor": null,
-        "pointsPct": 0.667,
-        "gameResult": "tie",
-        "goalAgainst": 3,
-        "shotAgainst": null,
-        "winLossType": "regulation",
-        "sportsmanship": 1,
-        "sportsmanshipPim": {
-          "totalPim": 4,
-          "regularTimePim": 4
-        },
-        "penaltyOccurrences": 4
-      }
-    ],
-    "surface": {
-      "venueId": "e41fdb57-97e2-4d1a-bbd4-0f4d4e326c75",
-      "parentId": null,
-      "name": "Glace 1",
-      "fraction": null,
-      "alias": "JOE-JUNEAU",
-      "timezone": "America/Toronto",
-      "sports": [
-        "Hockey"
-      ],
-      "type": "Ice",
-      "size": "M",
-      "path": "10459",
-      "externalId": "47371851-3ed7-452f-8068-67992dfe60b1",
-      "id": 10459,
-      "venue": {
-        "id": "e41fdb57-97e2-4d1a-bbd4-0f4d4e326c75",
-        "name": "Centre récréatif Joé-Juneau",
-        "address": "51 Rue du Collège",
-        "city": "Pont-Rouge",
-        "region": "QC",
-        "postalCode": "G3H 3A4",
-        "country": "Canada",
-        "alias": null,
-        "timezone": "America/Toronto",
-        "externalId": "bbe5f627-3007-4262-ab7e-0b738fe5ca4a"
-      }
-    },
-    "office": {
-      "name": "LIGUE HOCKEY MINEUR CAPITALE NATIONALE",
-      "type": "League",
-      "parentId": 6106,
-      "path": "467.2377.6106.6150",
-      "logoId": null,
-      "externalId": "1ef5f007-aa45-654a-a2df-0277dbbceb5f",
-      "timezone": "America/Toronto",
-      "isExternalTeam": false,
-      "color": "#000f46",
-      "slug": "ligue-hockey-mineur-capitale-nationale",
-      "id": 6150,
-      "createdAt": "2024-10-17T15:31:04.411Z",
-      "updatedAt": "2025-10-23T17:50:06.133Z",
-      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1ef5f007-aa45-654a-a2df-0277dbbceb5f/logos/1ef5f007-aa5c-6150-95ef-0277dbbceb5f.png"
-    },
-    "awayTeam": {
-      "name": "BÉLIERS QUÉBEC-CENTRE",
-      "shortName": "BÉLIERS QUÉBEC-CENTRE",
-      "division": "Junior",
-      "gender": "Integrated",
-      "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-      "seasonId": "2025-26",
-      "logoId": null,
-      "externalId": "1f0423c9-00a6-63be-aa91-02347ea6fef5",
-      "isPublic": true,
-      "isSanctioned": true,
-      "homeColor": "BLANC",
-      "awayColor": "BLEU",
-      "id": 126544,
-      "createdAt": "2025-06-05T18:40:35.000Z",
-      "updatedAt": "2026-01-22T20:13:21.981Z",
-      "officeId": 6128,
-      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/teams/1f0423c9-00a6-63be-aa91-02347ea6fef5/logos/1f0423c9-0098-6d68-958b-02347ea6fef5.png"
-    },
-    "homeTeam": {
-      "name": "DIABLOS DPR",
-      "shortName": "DIABLOS DPR",
-      "division": "Junior",
-      "gender": "Integrated",
-      "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-      "seasonId": "2025-26",
-      "logoId": null,
-      "externalId": "1f0423c9-0102-62b8-9b63-02347ea6fef5",
-      "isPublic": true,
-      "isSanctioned": true,
-      "homeColor": "NOIR",
-      "awayColor": "BLANC",
-      "id": 126536,
-      "createdAt": "2025-06-05T18:40:35.000Z",
-      "updatedAt": "2026-01-15T23:27:14.423Z",
-      "officeId": 6110,
-      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1eb5dab1-23ce-6170-bb0d-06ba8f7ba4e0/logos/1ec3724a-51d4-690a-8e1f-061d9f805e6e.png"
-    },
-    "externalProviders": [],
-    "isLive": false,
-    "score": {
-      "126536": 3,
-      "126544": 3
-    }
-  },
-  {
-    "number": "7138",
-    "date": "2026-01-16",
-    "startTime": "2026-01-17T01:30:00.000Z",
-    "endTime": "2026-01-17T03:00:00.000Z",
-    "timezone": "America/Toronto",
-    "division": "Junior",
-    "gender": "Integrated",
-    "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-    "seasonId": "2025-26",
-    "arenaId": 10463,
-    "scheduleId": 183360,
-    "groupId": null,
-    "crossGroupId": null,
-    "crossScheduleId": null,
-    "officeId": 6150,
-    "homeTeamId": 126539,
-    "awayTeamId": 126549,
-    "homeTeamComment": null,
-    "awayTeamComment": null,
-    "status": "Active",
-    "comments": null,
-    "isApproved": true,
-    "isCertified": false,
-    "spectators": null,
-    "actualStartTime": null,
-    "actualEndTime": null,
-    "id": 720435,
-    "category": {
-      "id": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-      "name": "Junior C",
-      "divisionId": "f184a861-f620-4a73-8f6c-c972c6470e3e",
-      "gender": "Integrated",
-      "classId": "81d91d4c-d9ca-40eb-a248-359bc5f0257b",
-      "order": 306,
-      "i18n": {
-        "fr": {
-          "name": "Junior C"
-        }
-      },
-      "nameFr": "Junior C",
-      "externalId": "1eebee5e-8df0-6ca0-a4a7-062a1ab93798",
-      "division": {
-        "id": "f184a861-f620-4a73-8f6c-c972c6470e3e",
-        "name": "Junior",
-        "shortName": "Junior",
-        "order": 23,
-        "i18n": {
-          "fr": {
-            "name": "Junior",
-            "shortName": "Junior"
-          }
-        }
-      },
-      "class": {
-        "id": "81d91d4c-d9ca-40eb-a248-359bc5f0257b",
-        "name": "C",
-        "shortName": "C",
-        "order": 6,
-        "i18n": {
-          "fr": {
-            "name": "C",
-            "shortName": "C"
-          }
-        }
-      }
-    },
-    "teamStats": [
-      {
-        "gameId": 720435,
-        "teamId": 126539,
-        "schemaId": "8f056ea1-457e-4fc6-b9f7-86e4e04eb058",
-        "id": 1184094,
-        "pk": 1,
-        "pim": 4,
-        "pko": 2,
-        "ppg": 1,
-        "ppo": 1,
-        "points": 1,
-        "goalFor": 3,
-        "shotFor": null,
-        "pointsPct": 0.667,
-        "gameResult": "tie",
-        "goalAgainst": 3,
-        "shotAgainst": null,
-        "winLossType": "regulation",
-        "sportsmanship": 1,
-        "sportsmanshipPim": {
-          "totalPim": 0,
-          "regularTimePim": 0
-        },
-        "penaltyOccurrences": 2
-      },
-      {
-        "gameId": 720435,
-        "teamId": 126549,
-        "schemaId": "8f056ea1-457e-4fc6-b9f7-86e4e04eb058",
-        "id": 1184095,
-        "pk": 0,
-        "pim": 2,
-        "pko": 1,
-        "ppg": 1,
-        "ppo": 2,
-        "points": 1,
-        "goalFor": 3,
-        "shotFor": null,
-        "pointsPct": 0.667,
-        "gameResult": "tie",
-        "goalAgainst": 3,
-        "shotAgainst": null,
-        "winLossType": "regulation",
-        "sportsmanship": 1,
-        "sportsmanshipPim": {
-          "totalPim": 0,
-          "regularTimePim": 0
-        },
-        "penaltyOccurrences": 1
-      }
-    ],
-    "surface": {
-      "venueId": "cf8e75b0-d820-4830-8463-0c6c586bcdc0",
-      "parentId": null,
-      "name": "Glace 1",
-      "fraction": null,
-      "alias": "PATRICK-POULIN",
-      "timezone": "America/Toronto",
-      "sports": [
-        "Hockey"
-      ],
-      "type": "Ice",
-      "size": "M",
-      "path": "10463",
-      "externalId": "b3aa8934-ef36-406c-9060-6f81a47ee218",
-      "id": 10463,
-      "venue": {
-        "id": "cf8e75b0-d820-4830-8463-0c6c586bcdc0",
-        "name": "Aréna Patrick-Poulin",
-        "address": "220 Chanoine-Cote Ave",
-        "city": "Québec",
-        "region": "QC",
-        "postalCode": "G1M 2X4",
-        "country": "Canada",
-        "alias": null,
-        "timezone": "America/Toronto",
-        "externalId": "c92719c6-5904-474f-90dd-0594a598e4fe"
-      }
-    },
-    "office": {
-      "name": "LIGUE HOCKEY MINEUR CAPITALE NATIONALE",
-      "type": "League",
-      "parentId": 6106,
-      "path": "467.2377.6106.6150",
-      "logoId": null,
-      "externalId": "1ef5f007-aa45-654a-a2df-0277dbbceb5f",
-      "timezone": "America/Toronto",
-      "isExternalTeam": false,
-      "color": "#000f46",
-      "slug": "ligue-hockey-mineur-capitale-nationale",
-      "id": 6150,
-      "createdAt": "2024-10-17T15:31:04.411Z",
-      "updatedAt": "2025-10-23T17:50:06.133Z",
-      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1ef5f007-aa45-654a-a2df-0277dbbceb5f/logos/1ef5f007-aa5c-6150-95ef-0277dbbceb5f.png"
-    },
-    "awayTeam": {
-      "name": "ÉPERVIERS BEAUPORT",
-      "shortName": "ÉPERVIERS BEAUPORT",
-      "division": "Junior",
-      "gender": "Integrated",
-      "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-      "seasonId": "2025-26",
-      "logoId": null,
-      "externalId": "1f0423c9-0079-642c-b1d9-02347ea6fef5",
-      "isPublic": true,
-      "isSanctioned": true,
-      "homeColor": "JAUNE",
-      "awayColor": "BLANC",
-      "id": 126549,
-      "createdAt": "2025-06-05T18:40:35.000Z",
-      "updatedAt": "2025-11-17T14:26:51.278Z",
-      "officeId": 6126,
-      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1eb5dab7-4050-6680-bd9a-06ba8f7ba4e0/logos/1ebc017d-1631-6b04-8b96-0682f9c65d50.png"
-    },
-    "homeTeam": {
-      "name": "PATRIOTES  QUÉBEC-CENTRE",
-      "shortName": "PATRIOTES  QUÉBEC-CENTRE",
-      "division": "Junior",
-      "gender": "Integrated",
-      "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-      "seasonId": "2025-26",
-      "logoId": null,
-      "externalId": "1f0423c9-00b6-6f3e-aabd-02347ea6fef5",
-      "isPublic": true,
-      "isSanctioned": true,
-      "homeColor": "BLANC",
-      "awayColor": "BLEU",
-      "id": 126539,
-      "createdAt": "2025-06-05T18:40:35.000Z",
-      "updatedAt": "2026-01-05T15:30:53.741Z",
-      "officeId": 6128,
-      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/teams/1f0423c9-00b6-6f3e-aabd-02347ea6fef5/logos/1f0423c9-00a6-6580-9e7f-02347ea6fef5.png"
-    },
-    "externalProviders": [],
-    "isLive": false,
-    "score": {
-      "126539": 3,
-      "126549": 3
-    }
-  },
-  {
-    "number": "7139",
-    "date": "2026-01-16",
-    "startTime": "2026-01-17T02:00:00.000Z",
-    "endTime": "2026-01-17T03:30:00.000Z",
-    "timezone": "America/Toronto",
-    "division": "Junior",
-    "gender": "Integrated",
-    "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-    "seasonId": "2025-26",
-    "arenaId": 10676,
-    "scheduleId": 183360,
-    "groupId": null,
-    "crossGroupId": null,
-    "crossScheduleId": null,
-    "officeId": 6150,
-    "homeTeamId": 145567,
-    "awayTeamId": 141324,
-    "homeTeamComment": null,
-    "awayTeamComment": null,
-    "status": "Active",
-    "comments": null,
-    "isApproved": true,
-    "isCertified": false,
-    "spectators": null,
-    "actualStartTime": null,
-    "actualEndTime": null,
-    "id": 720431,
-    "category": {
-      "id": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-      "name": "Junior C",
-      "divisionId": "f184a861-f620-4a73-8f6c-c972c6470e3e",
-      "gender": "Integrated",
-      "classId": "81d91d4c-d9ca-40eb-a248-359bc5f0257b",
-      "order": 306,
-      "i18n": {
-        "fr": {
-          "name": "Junior C"
-        }
-      },
-      "nameFr": "Junior C",
-      "externalId": "1eebee5e-8df0-6ca0-a4a7-062a1ab93798",
-      "division": {
-        "id": "f184a861-f620-4a73-8f6c-c972c6470e3e",
-        "name": "Junior",
-        "shortName": "Junior",
-        "order": 23,
-        "i18n": {
-          "fr": {
-            "name": "Junior",
-            "shortName": "Junior"
-          }
-        }
-      },
-      "class": {
-        "id": "81d91d4c-d9ca-40eb-a248-359bc5f0257b",
-        "name": "C",
-        "shortName": "C",
-        "order": 6,
-        "i18n": {
-          "fr": {
-            "name": "C",
-            "shortName": "C"
-          }
-        }
-      }
-    },
-    "teamStats": [
-      {
-        "gameId": 720431,
-        "teamId": 141324,
-        "schemaId": "8f056ea1-457e-4fc6-b9f7-86e4e04eb058",
-        "id": 1184200,
-        "pk": 4,
-        "pim": 8,
-        "pko": 4,
-        "ppg": 2,
-        "ppo": 4,
-        "points": 2,
-        "goalFor": 6,
-        "shotFor": null,
-        "pointsPct": 1,
-        "gameResult": "win",
-        "goalAgainst": 2,
-        "shotAgainst": null,
-        "winLossType": "regulation",
-        "sportsmanship": 1,
-        "sportsmanshipPim": {
-          "totalPim": 6,
-          "regularTimePim": 6
-        },
-        "penaltyOccurrences": 4
-      },
-      {
-        "gameId": 720431,
-        "teamId": 145567,
-        "schemaId": "8f056ea1-457e-4fc6-b9f7-86e4e04eb058",
-        "id": 1184201,
-        "pk": 2,
-        "pim": 10,
-        "pko": 4,
-        "ppg": 0,
-        "ppo": 4,
-        "points": 0,
-        "goalFor": 2,
-        "shotFor": null,
-        "pointsPct": 0.333,
-        "gameResult": "loss",
-        "goalAgainst": 6,
-        "shotAgainst": null,
-        "winLossType": "regulation",
-        "sportsmanship": 1,
-        "sportsmanshipPim": {
-          "totalPim": 6,
-          "regularTimePim": 6
-        },
-        "penaltyOccurrences": 5
-      }
-    ],
-    "surface": {
-      "venueId": "5caebb28-4c3d-419a-9932-3503ea288acd",
-      "parentId": null,
-      "name": "Glace 1",
-      "fraction": null,
-      "alias": "MARC-SIM-1",
-      "timezone": "America/Toronto",
-      "sports": [
-        "Hockey"
-      ],
-      "type": "Ice",
-      "size": "M",
-      "path": "10676",
-      "externalId": "07af7802-ff5d-4f53-b8ee-8bc52da888f3",
-      "id": 10676,
-      "venue": {
-        "id": "5caebb28-4c3d-419a-9932-3503ea288acd",
-        "name": "Centre Sportif Marc-Simoneau",
-        "address": "3500 Rue Cambronne",
-        "city": "Québec",
-        "region": "QC",
-        "postalCode": "G1E 7H2",
-        "country": "Canada",
-        "alias": null,
-        "timezone": "America/Toronto",
-        "externalId": "2d8048ed-ec04-4158-805a-b68809a4df5a"
-      }
-    },
-    "office": {
-      "name": "LIGUE HOCKEY MINEUR CAPITALE NATIONALE",
-      "type": "League",
-      "parentId": 6106,
-      "path": "467.2377.6106.6150",
-      "logoId": null,
-      "externalId": "1ef5f007-aa45-654a-a2df-0277dbbceb5f",
-      "timezone": "America/Toronto",
-      "isExternalTeam": false,
-      "color": "#000f46",
-      "slug": "ligue-hockey-mineur-capitale-nationale",
-      "id": 6150,
-      "createdAt": "2024-10-17T15:31:04.411Z",
-      "updatedAt": "2025-10-23T17:50:06.133Z",
-      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1ef5f007-aa45-654a-a2df-0277dbbceb5f/logos/1ef5f007-aa5c-6150-95ef-0277dbbceb5f.png"
-    },
-    "awayTeam": {
-      "name": "GOUVERNEURS 3 SFSAL",
-      "shortName": "GOUVERNEURS 3 SFSAL",
-      "division": "Junior",
-      "gender": "Integrated",
-      "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-      "seasonId": "2025-26",
-      "logoId": null,
-      "externalId": "1f08d96c-b658-6380-8056-06d853421783",
-      "isPublic": true,
-      "isSanctioned": true,
-      "homeColor": "Noir",
-      "awayColor": "Blanc",
-      "id": 141324,
-      "createdAt": "2025-09-09T16:05:24.000Z",
-      "updatedAt": "2025-12-11T22:15:25.003Z",
-      "officeId": 6120,
-      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1eb5dab4-b613-6992-8e91-06ba8f7ba4e0/logos/1ebc017d-09ef-68b4-8697-0682f9c65d50.png"
-    },
-    "homeTeam": {
-      "name": "FAUCONS BEAUPORT",
-      "shortName": "FAUCONS",
-      "division": "Junior",
-      "gender": "Integrated",
-      "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
-      "seasonId": "2025-26",
-      "logoId": null,
-      "externalId": "1f09ae43-ebbc-6790-a285-0618961c04a3",
-      "isPublic": true,
-      "isSanctioned": true,
-      "homeColor": "JAUNE",
-      "awayColor": "BLANC",
-      "id": 145567,
-      "createdAt": "2025-09-26T14:22:34.000Z",
-      "updatedAt": "2025-11-18T16:34:33.341Z",
-      "officeId": 6126,
-      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1eb5dab7-4050-6680-bd9a-06ba8f7ba4e0/logos/1ebc017d-1631-6b04-8b96-0682f9c65d50.png"
-    },
-    "externalProviders": [],
-    "isLive": false,
-    "score": {
-      "141324": 6,
-      "145567": 2
-    }
-  },
-  {
     "number": "7140",
     "date": "2026-01-17",
     "startTime": "2026-01-17T22:30:00.000Z",
@@ -1894,7 +22,7 @@
     "status": "Active",
     "comments": null,
     "isApproved": true,
-    "isCertified": false,
+    "isCertified": true,
     "spectators": null,
     "actualStartTime": null,
     "actualEndTime": null,
@@ -2068,7 +196,7 @@
       "awayColor": "BLANC",
       "id": 145567,
       "createdAt": "2025-09-26T14:22:34.000Z",
-      "updatedAt": "2025-11-18T16:34:33.341Z",
+      "updatedAt": "2026-01-29T17:03:12.282Z",
       "officeId": 6126,
       "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1eb5dab7-4050-6680-bd9a-06ba8f7ba4e0/logos/1ebc017d-1631-6b04-8b96-0682f9c65d50.png"
     },
@@ -2102,7 +230,7 @@
     "status": "Active",
     "comments": null,
     "isApproved": true,
-    "isCertified": false,
+    "isCertified": true,
     "spectators": null,
     "actualStartTime": null,
     "actualEndTime": null,
@@ -2310,7 +438,7 @@
     "status": "Active",
     "comments": null,
     "isApproved": true,
-    "isCertified": false,
+    "isCertified": true,
     "spectators": null,
     "actualStartTime": null,
     "actualEndTime": null,
@@ -2518,7 +646,7 @@
     "status": "Active",
     "comments": null,
     "isApproved": true,
-    "isCertified": false,
+    "isCertified": true,
     "spectators": null,
     "actualStartTime": null,
     "actualEndTime": null,
@@ -2726,7 +854,7 @@
     "status": "Active",
     "comments": null,
     "isApproved": true,
-    "isCertified": false,
+    "isCertified": true,
     "spectators": null,
     "actualStartTime": null,
     "actualEndTime": null,
@@ -2900,7 +1028,7 @@
       "awayColor": "BLANC",
       "id": 126413,
       "createdAt": "2025-06-05T18:40:35.000Z",
-      "updatedAt": "2026-01-23T17:41:05.741Z",
+      "updatedAt": "2026-01-27T14:48:05.536Z",
       "officeId": 6122,
       "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/teams/1f0423c9-08e1-6b8c-9d74-02347ea6fef5/logos/1f0423c9-08d3-6924-a13b-02347ea6fef5.jpg"
     },
@@ -2934,7 +1062,7 @@
     "status": "Active",
     "comments": null,
     "isApproved": true,
-    "isCertified": false,
+    "isCertified": true,
     "spectators": null,
     "actualStartTime": null,
     "actualEndTime": null,
@@ -3142,7 +1270,7 @@
     "status": "Active",
     "comments": null,
     "isApproved": true,
-    "isCertified": false,
+    "isCertified": true,
     "spectators": null,
     "actualStartTime": null,
     "actualEndTime": null,
@@ -3350,7 +1478,7 @@
     "status": "Active",
     "comments": null,
     "isApproved": true,
-    "isCertified": false,
+    "isCertified": true,
     "spectators": null,
     "actualStartTime": "2026-01-23T00:02:00.000Z",
     "actualEndTime": "2026-01-23T01:22:00.000Z",
@@ -3558,7 +1686,7 @@
     "status": "Active",
     "comments": null,
     "isApproved": true,
-    "isCertified": false,
+    "isCertified": true,
     "spectators": null,
     "actualStartTime": null,
     "actualEndTime": null,
@@ -3766,7 +1894,7 @@
     "status": "Active",
     "comments": null,
     "isApproved": true,
-    "isCertified": false,
+    "isCertified": true,
     "spectators": null,
     "actualStartTime": null,
     "actualEndTime": null,
@@ -3974,7 +2102,7 @@
     "status": "Active",
     "comments": null,
     "isApproved": true,
-    "isCertified": false,
+    "isCertified": true,
     "spectators": null,
     "actualStartTime": "2026-01-24T19:30:00.000Z",
     "actualEndTime": "2026-01-24T20:43:00.000Z",
@@ -4182,7 +2310,7 @@
     "status": "Active",
     "comments": null,
     "isApproved": true,
-    "isCertified": false,
+    "isCertified": true,
     "spectators": null,
     "actualStartTime": "2026-01-24T22:08:00.000Z",
     "actualEndTime": "2026-01-24T23:15:00.000Z",
@@ -4337,7 +2465,7 @@
       "awayColor": "BLANC",
       "id": 126413,
       "createdAt": "2025-06-05T18:40:35.000Z",
-      "updatedAt": "2026-01-23T17:41:05.741Z",
+      "updatedAt": "2026-01-27T14:48:05.536Z",
       "officeId": 6122,
       "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/teams/1f0423c9-08e1-6b8c-9d74-02347ea6fef5/logos/1f0423c9-08d3-6924-a13b-02347ea6fef5.jpg"
     },
@@ -4390,7 +2518,7 @@
     "status": "Active",
     "comments": null,
     "isApproved": true,
-    "isCertified": false,
+    "isCertified": true,
     "spectators": null,
     "actualStartTime": null,
     "actualEndTime": null,
@@ -4598,7 +2726,7 @@
     "status": "Active",
     "comments": null,
     "isApproved": true,
-    "isCertified": false,
+    "isCertified": true,
     "spectators": null,
     "actualStartTime": "2026-01-24T23:38:00.000Z",
     "actualEndTime": "2026-01-25T00:53:00.000Z",
@@ -4806,7 +2934,7 @@
     "status": "Active",
     "comments": null,
     "isApproved": true,
-    "isCertified": false,
+    "isCertified": true,
     "spectators": null,
     "actualStartTime": null,
     "actualEndTime": null,
@@ -4961,7 +3089,7 @@
       "awayColor": "BLANC",
       "id": 145567,
       "createdAt": "2025-09-26T14:22:34.000Z",
-      "updatedAt": "2025-11-18T16:34:33.341Z",
+      "updatedAt": "2026-01-29T17:03:12.282Z",
       "officeId": 6126,
       "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1eb5dab7-4050-6680-bd9a-06ba8f7ba4e0/logos/1ebc017d-1631-6b04-8b96-0682f9c65d50.png"
     },
@@ -5014,7 +3142,7 @@
     "status": "Active",
     "comments": null,
     "isApproved": true,
-    "isCertified": false,
+    "isCertified": true,
     "spectators": null,
     "actualStartTime": "2026-01-25T02:09:00.000Z",
     "actualEndTime": "2026-01-25T03:18:00.000Z",
@@ -5221,11 +3349,11 @@
     "awayTeamComment": null,
     "status": "Active",
     "comments": null,
-    "isApproved": false,
-    "isCertified": false,
+    "isApproved": true,
+    "isCertified": true,
     "spectators": null,
-    "actualStartTime": null,
-    "actualEndTime": null,
+    "actualStartTime": "2026-01-25T21:55:00.000Z",
+    "actualEndTime": "2026-01-25T23:07:00.000Z",
     "id": 720445,
     "category": {
       "id": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
@@ -5266,7 +3394,58 @@
         }
       }
     },
-    "teamStats": [],
+    "teamStats": [
+      {
+        "gameId": 720445,
+        "teamId": 126537,
+        "schemaId": "8f056ea1-457e-4fc6-b9f7-86e4e04eb058",
+        "id": 1206022,
+        "pk": 0,
+        "pim": 2,
+        "pko": 1,
+        "ppg": 0,
+        "ppo": 4,
+        "points": 2,
+        "goalFor": 5,
+        "shotFor": null,
+        "pointsPct": 1,
+        "gameResult": "win",
+        "goalAgainst": 4,
+        "shotAgainst": null,
+        "winLossType": "regulation",
+        "sportsmanship": 1,
+        "sportsmanshipPim": {
+          "totalPim": 0,
+          "regularTimePim": 0
+        },
+        "penaltyOccurrences": 1
+      },
+      {
+        "gameId": 720445,
+        "teamId": 126414,
+        "schemaId": "8f056ea1-457e-4fc6-b9f7-86e4e04eb058",
+        "id": 1206023,
+        "pk": 4,
+        "pim": 8,
+        "pko": 4,
+        "ppg": 1,
+        "ppo": 1,
+        "points": 0,
+        "goalFor": 4,
+        "shotFor": null,
+        "pointsPct": 0.333,
+        "gameResult": "loss",
+        "goalAgainst": 5,
+        "shotAgainst": null,
+        "winLossType": "regulation",
+        "sportsmanship": 1,
+        "sportsmanshipPim": {
+          "totalPim": 4,
+          "regularTimePim": 4
+        },
+        "penaltyOccurrences": 4
+      }
+    ],
     "surface": {
       "venueId": "f998150b-e43d-4429-b3c5-59b6181326e1",
       "parentId": null,
@@ -5350,7 +3529,11 @@
       "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1eb5dab5-7afd-6e06-ba78-06ba8f7ba4e0/logos/1ebc017d-0db5-669c-b98d-06213da53fb2.png"
     },
     "externalProviders": [],
-    "isLive": false
+    "isLive": false,
+    "score": {
+      "126414": 4,
+      "126537": 5
+    }
   },
   {
     "number": "7157",
@@ -5374,11 +3557,11 @@
     "awayTeamComment": null,
     "status": "Active",
     "comments": null,
-    "isApproved": false,
-    "isCertified": false,
+    "isApproved": true,
+    "isCertified": true,
     "spectators": null,
-    "actualStartTime": null,
-    "actualEndTime": null,
+    "actualStartTime": "2026-01-25T23:30:00.000Z",
+    "actualEndTime": "2026-01-26T00:45:00.000Z",
     "id": 720441,
     "category": {
       "id": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
@@ -5419,7 +3602,58 @@
         }
       }
     },
-    "teamStats": [],
+    "teamStats": [
+      {
+        "gameId": 720441,
+        "teamId": 126412,
+        "schemaId": "8f056ea1-457e-4fc6-b9f7-86e4e04eb058",
+        "id": 1206492,
+        "pk": 1,
+        "pim": 6,
+        "pko": 1,
+        "ppg": 1,
+        "ppo": 4,
+        "points": 0,
+        "goalFor": 4,
+        "shotFor": null,
+        "pointsPct": 0.333,
+        "gameResult": "loss",
+        "goalAgainst": 7,
+        "shotAgainst": null,
+        "winLossType": "regulation",
+        "sportsmanship": 1,
+        "sportsmanshipPim": {
+          "totalPim": 6,
+          "regularTimePim": 6
+        },
+        "penaltyOccurrences": 3
+      },
+      {
+        "gameId": 720441,
+        "teamId": 126538,
+        "schemaId": "8f056ea1-457e-4fc6-b9f7-86e4e04eb058",
+        "id": 1206493,
+        "pk": 3,
+        "pim": 12,
+        "pko": 4,
+        "ppg": 0,
+        "ppo": 1,
+        "points": 2,
+        "goalFor": 7,
+        "shotFor": null,
+        "pointsPct": 1,
+        "gameResult": "win",
+        "goalAgainst": 4,
+        "shotAgainst": null,
+        "winLossType": "regulation",
+        "sportsmanship": 1,
+        "sportsmanshipPim": {
+          "totalPim": 8,
+          "regularTimePim": 8
+        },
+        "penaltyOccurrences": 6
+      }
+    ],
     "surface": {
       "venueId": "f998150b-e43d-4429-b3c5-59b6181326e1",
       "parentId": null,
@@ -5503,7 +3737,11 @@
       "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1eb5dab5-7afd-6e06-ba78-06ba8f7ba4e0/logos/1ebc017d-0db5-669c-b98d-06213da53fb2.png"
     },
     "externalProviders": [],
-    "isLive": false
+    "isLive": false,
+    "score": {
+      "126412": 4,
+      "126538": 7
+    }
   },
   {
     "number": "7158",
@@ -5527,11 +3765,11 @@
     "awayTeamComment": null,
     "status": "Active",
     "comments": null,
-    "isApproved": false,
-    "isCertified": false,
+    "isApproved": true,
+    "isCertified": true,
     "spectators": null,
-    "actualStartTime": null,
-    "actualEndTime": null,
+    "actualStartTime": "2026-01-26T00:29:00.000Z",
+    "actualEndTime": "2026-01-26T01:50:00.000Z",
     "id": 720508,
     "category": {
       "id": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
@@ -5572,7 +3810,58 @@
         }
       }
     },
-    "teamStats": [],
+    "teamStats": [
+      {
+        "gameId": 720508,
+        "teamId": 126544,
+        "schemaId": "8f056ea1-457e-4fc6-b9f7-86e4e04eb058",
+        "id": 1206664,
+        "pk": 3,
+        "pim": 6,
+        "pko": 3,
+        "ppg": 2,
+        "ppo": 6,
+        "points": 2,
+        "goalFor": 4,
+        "shotFor": null,
+        "pointsPct": 1,
+        "gameResult": "win",
+        "goalAgainst": 1,
+        "shotAgainst": null,
+        "winLossType": "regulation",
+        "sportsmanship": 1,
+        "sportsmanshipPim": {
+          "totalPim": 4,
+          "regularTimePim": 4
+        },
+        "penaltyOccurrences": 3
+      },
+      {
+        "gameId": 720508,
+        "teamId": 126539,
+        "schemaId": "8f056ea1-457e-4fc6-b9f7-86e4e04eb058",
+        "id": 1206665,
+        "pk": 4,
+        "pim": 14,
+        "pko": 6,
+        "ppg": 0,
+        "ppo": 3,
+        "points": 0,
+        "goalFor": 1,
+        "shotFor": null,
+        "pointsPct": 0.333,
+        "gameResult": "loss",
+        "goalAgainst": 4,
+        "shotAgainst": null,
+        "winLossType": "regulation",
+        "sportsmanship": 1,
+        "sportsmanshipPim": {
+          "totalPim": 8,
+          "regularTimePim": 8
+        },
+        "penaltyOccurrences": 7
+      }
+    ],
     "surface": {
       "venueId": "26b3c516-eab8-4c55-bea8-92128727370e",
       "parentId": null,
@@ -5656,7 +3945,11 @@
       "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/teams/1f0423c9-00a6-63be-aa91-02347ea6fef5/logos/1f0423c9-0098-6d68-958b-02347ea6fef5.png"
     },
     "externalProviders": [],
-    "isLive": false
+    "isLive": false,
+    "score": {
+      "126539": 1,
+      "126544": 4
+    }
   },
   {
     "number": "7159",
@@ -5680,11 +3973,11 @@
     "awayTeamComment": null,
     "status": "Active",
     "comments": null,
-    "isApproved": false,
-    "isCertified": false,
+    "isApproved": true,
+    "isCertified": true,
     "spectators": null,
-    "actualStartTime": null,
-    "actualEndTime": null,
+    "actualStartTime": "2026-01-29T02:05:00.000Z",
+    "actualEndTime": "2026-01-29T03:25:00.000Z",
     "id": 720451,
     "category": {
       "id": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
@@ -5725,7 +4018,58 @@
         }
       }
     },
-    "teamStats": [],
+    "teamStats": [
+      {
+        "gameId": 720451,
+        "teamId": 141479,
+        "schemaId": "8f056ea1-457e-4fc6-b9f7-86e4e04eb058",
+        "id": 1209169,
+        "pk": 2,
+        "pim": 4,
+        "pko": 2,
+        "ppg": 0,
+        "ppo": 2,
+        "points": 2,
+        "goalFor": 6,
+        "shotFor": 32,
+        "pointsPct": 1,
+        "gameResult": "win",
+        "goalAgainst": 5,
+        "shotAgainst": 29,
+        "winLossType": "regulation",
+        "sportsmanship": 1,
+        "sportsmanshipPim": {
+          "totalPim": 2,
+          "regularTimePim": 2
+        },
+        "penaltyOccurrences": 2
+      },
+      {
+        "gameId": 720451,
+        "teamId": 141324,
+        "schemaId": "8f056ea1-457e-4fc6-b9f7-86e4e04eb058",
+        "id": 1209170,
+        "pk": 2,
+        "pim": 12,
+        "pko": 2,
+        "ppg": 0,
+        "ppo": 2,
+        "points": 0,
+        "goalFor": 5,
+        "shotFor": 29,
+        "pointsPct": 0,
+        "gameResult": "loss",
+        "goalAgainst": 6,
+        "shotAgainst": 32,
+        "winLossType": "regulation",
+        "sportsmanship": 0,
+        "sportsmanshipPim": {
+          "totalPim": 101,
+          "regularTimePim": 101
+        },
+        "penaltyOccurrences": 2
+      }
+    ],
     "surface": {
       "venueId": "2831df98-e1a1-4341-a61d-9d2bdad589a3",
       "parentId": null,
@@ -5809,7 +4153,11 @@
       "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1eb5dab0-29ff-69d2-ba7d-06ba8f7ba4e0/logos/1ebc017c-f94a-675c-b6e3-020ca418dc48.png"
     },
     "externalProviders": [],
-    "isLive": false
+    "isLive": false,
+    "score": {
+      "141324": 5,
+      "141479": 6
+    }
   },
   {
     "number": "7160",
@@ -5833,11 +4181,11 @@
     "awayTeamComment": null,
     "status": "Active",
     "comments": null,
-    "isApproved": false,
+    "isApproved": true,
     "isCertified": false,
     "spectators": null,
-    "actualStartTime": null,
-    "actualEndTime": null,
+    "actualStartTime": "2026-01-30T01:00:00.000Z",
+    "actualEndTime": "2026-01-30T02:20:00.000Z",
     "id": 720456,
     "category": {
       "id": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
@@ -5878,7 +4226,58 @@
         }
       }
     },
-    "teamStats": [],
+    "teamStats": [
+      {
+        "gameId": 720456,
+        "teamId": 126544,
+        "schemaId": "8f056ea1-457e-4fc6-b9f7-86e4e04eb058",
+        "id": 1210064,
+        "pk": 3,
+        "pim": 12,
+        "pko": 4,
+        "ppg": 2,
+        "ppo": 5,
+        "points": 1,
+        "goalFor": 5,
+        "shotFor": null,
+        "pointsPct": 0.667,
+        "gameResult": "tie",
+        "goalAgainst": 5,
+        "shotAgainst": null,
+        "winLossType": "regulation",
+        "sportsmanship": 1,
+        "sportsmanshipPim": {
+          "totalPim": 10,
+          "regularTimePim": 10
+        },
+        "penaltyOccurrences": 6
+      },
+      {
+        "gameId": 720456,
+        "teamId": 145572,
+        "schemaId": "8f056ea1-457e-4fc6-b9f7-86e4e04eb058",
+        "id": 1210065,
+        "pk": 3,
+        "pim": 14,
+        "pko": 5,
+        "ppg": 1,
+        "ppo": 4,
+        "points": 1,
+        "goalFor": 5,
+        "shotFor": null,
+        "pointsPct": 0.667,
+        "gameResult": "tie",
+        "goalAgainst": 5,
+        "shotAgainst": null,
+        "winLossType": "regulation",
+        "sportsmanship": 1,
+        "sportsmanshipPim": {
+          "totalPim": 10,
+          "regularTimePim": 10
+        },
+        "penaltyOccurrences": 7
+      }
+    ],
     "surface": {
       "venueId": "dc2a5f0b-3e18-4e90-a4fa-c9eaf8325689",
       "parentId": null,
@@ -5962,7 +4361,11 @@
       "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/teams/1f0423c9-00a6-63be-aa91-02347ea6fef5/logos/1f0423c9-0098-6d68-958b-02347ea6fef5.png"
     },
     "externalProviders": [],
-    "isLive": false
+    "isLive": false,
+    "score": {
+      "126544": 5,
+      "145572": 5
+    }
   },
   {
     "number": "7161",
@@ -6419,6 +4822,618 @@
       "updatedAt": "2025-11-14T18:46:43.671Z",
       "officeId": 6128,
       "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1eb5dab7-b59b-6d0e-98c1-06ba8f7ba4e0/logos/1ebc017d-1759-6ca2-9bb7-06d7167eb1a8.png"
+    },
+    "externalProviders": [],
+    "isLive": false
+  },
+  {
+    "number": "7165",
+    "date": "2026-02-02",
+    "startTime": "2026-02-03T01:30:00.000Z",
+    "endTime": "2026-02-03T03:00:00.000Z",
+    "timezone": "America/Toronto",
+    "division": "Junior",
+    "gender": "Integrated",
+    "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
+    "seasonId": "2025-26",
+    "arenaId": 10501,
+    "scheduleId": 183360,
+    "groupId": null,
+    "crossGroupId": null,
+    "crossScheduleId": null,
+    "officeId": 6150,
+    "homeTeamId": 141479,
+    "awayTeamId": 126541,
+    "homeTeamComment": null,
+    "awayTeamComment": null,
+    "status": "Active",
+    "comments": null,
+    "isApproved": false,
+    "isCertified": false,
+    "spectators": null,
+    "actualStartTime": null,
+    "actualEndTime": null,
+    "id": 720517,
+    "category": {
+      "id": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
+      "name": "Junior C",
+      "divisionId": "f184a861-f620-4a73-8f6c-c972c6470e3e",
+      "gender": "Integrated",
+      "classId": "81d91d4c-d9ca-40eb-a248-359bc5f0257b",
+      "order": 306,
+      "i18n": {
+        "fr": {
+          "name": "Junior C"
+        }
+      },
+      "nameFr": "Junior C",
+      "externalId": "1eebee5e-8df0-6ca0-a4a7-062a1ab93798",
+      "division": {
+        "id": "f184a861-f620-4a73-8f6c-c972c6470e3e",
+        "name": "Junior",
+        "shortName": "Junior",
+        "order": 23,
+        "i18n": {
+          "fr": {
+            "name": "Junior",
+            "shortName": "Junior"
+          }
+        }
+      },
+      "class": {
+        "id": "81d91d4c-d9ca-40eb-a248-359bc5f0257b",
+        "name": "C",
+        "shortName": "C",
+        "order": 6,
+        "i18n": {
+          "fr": {
+            "name": "C",
+            "shortName": "C"
+          }
+        }
+      }
+    },
+    "teamStats": [],
+    "surface": {
+      "venueId": "0338deba-05da-4fd5-8948-e2cc4476019b",
+      "parentId": null,
+      "name": "Glace A",
+      "fraction": null,
+      "alias": "DESMAURES-A",
+      "timezone": "America/Toronto",
+      "sports": [
+        "Hockey"
+      ],
+      "type": "Ice",
+      "size": "M",
+      "path": "10501",
+      "externalId": "44721a15-90dc-4008-9715-26765b4053a9",
+      "id": 10501,
+      "venue": {
+        "id": "0338deba-05da-4fd5-8948-e2cc4476019b",
+        "name": "Complexe sportif de Saint-Augustin-de-Desmaures",
+        "address": "230 Rte de Fossambault",
+        "city": "Saint-Augustin-de-Desmaures",
+        "region": "QC",
+        "postalCode": "G3A 0R3",
+        "country": "Canada",
+        "alias": null,
+        "timezone": "America/Toronto",
+        "externalId": "73d35cb3-65ce-47fb-b23d-889118077d20"
+      }
+    },
+    "office": {
+      "name": "LIGUE HOCKEY MINEUR CAPITALE NATIONALE",
+      "type": "League",
+      "parentId": 6106,
+      "path": "467.2377.6106.6150",
+      "logoId": null,
+      "externalId": "1ef5f007-aa45-654a-a2df-0277dbbceb5f",
+      "timezone": "America/Toronto",
+      "isExternalTeam": false,
+      "color": "#000f46",
+      "slug": "ligue-hockey-mineur-capitale-nationale",
+      "id": 6150,
+      "createdAt": "2024-10-17T15:31:04.411Z",
+      "updatedAt": "2025-10-23T17:50:06.133Z",
+      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1ef5f007-aa45-654a-a2df-0277dbbceb5f/logos/1ef5f007-aa5c-6150-95ef-0277dbbceb5f.png"
+    },
+    "awayTeam": {
+      "name": "GOUVERNEURS 1 SFSAL",
+      "shortName": "GOUVERNEURS 1 SFSAL",
+      "division": "Junior",
+      "gender": "Integrated",
+      "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
+      "seasonId": "2025-26",
+      "logoId": null,
+      "externalId": "1f0423c9-00f3-686c-8801-02347ea6fef5",
+      "isPublic": true,
+      "isSanctioned": true,
+      "homeColor": "NOIR",
+      "awayColor": "BLANC",
+      "id": 126541,
+      "createdAt": "2025-06-05T18:40:35.000Z",
+      "updatedAt": "2026-01-20T18:11:20.976Z",
+      "officeId": 6120,
+      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/teams/1f0423c9-00f3-686c-8801-02347ea6fef5/logos/1f0423c9-00e4-69ca-8c3a-02347ea6fef5.png"
+    },
+    "homeTeam": {
+      "name": "ROYAUX 1 CRSA",
+      "shortName": "ROYAUX 1 CRSA",
+      "division": "Junior",
+      "gender": "Integrated",
+      "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
+      "seasonId": "2025-26",
+      "logoId": null,
+      "externalId": "1f08e6a9-8f27-6866-8060-06d853421783",
+      "isPublic": true,
+      "isSanctioned": true,
+      "homeColor": "Bleu",
+      "awayColor": "Blanc",
+      "id": 141479,
+      "createdAt": "2025-09-10T17:21:33.000Z",
+      "updatedAt": "2026-01-06T19:51:24.603Z",
+      "officeId": 6109,
+      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1eb5dab0-29ff-69d2-ba7d-06ba8f7ba4e0/logos/1ebc017c-f94a-675c-b6e3-020ca418dc48.png"
+    },
+    "externalProviders": [],
+    "isLive": false
+  },
+  {
+    "number": "7166",
+    "date": "2026-02-03",
+    "startTime": "2026-02-04T00:30:00.000Z",
+    "endTime": "2026-02-04T02:00:00.000Z",
+    "timezone": "America/Toronto",
+    "division": "Junior",
+    "gender": "Integrated",
+    "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
+    "seasonId": "2025-26",
+    "arenaId": 10462,
+    "scheduleId": 183360,
+    "groupId": null,
+    "crossGroupId": null,
+    "crossScheduleId": null,
+    "officeId": 6150,
+    "homeTeamId": 145572,
+    "awayTeamId": 126537,
+    "homeTeamComment": null,
+    "awayTeamComment": null,
+    "status": "Active",
+    "comments": null,
+    "isApproved": false,
+    "isCertified": false,
+    "spectators": null,
+    "actualStartTime": null,
+    "actualEndTime": null,
+    "id": 720457,
+    "category": {
+      "id": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
+      "name": "Junior C",
+      "divisionId": "f184a861-f620-4a73-8f6c-c972c6470e3e",
+      "gender": "Integrated",
+      "classId": "81d91d4c-d9ca-40eb-a248-359bc5f0257b",
+      "order": 306,
+      "i18n": {
+        "fr": {
+          "name": "Junior C"
+        }
+      },
+      "nameFr": "Junior C",
+      "externalId": "1eebee5e-8df0-6ca0-a4a7-062a1ab93798",
+      "division": {
+        "id": "f184a861-f620-4a73-8f6c-c972c6470e3e",
+        "name": "Junior",
+        "shortName": "Junior",
+        "order": 23,
+        "i18n": {
+          "fr": {
+            "name": "Junior",
+            "shortName": "Junior"
+          }
+        }
+      },
+      "class": {
+        "id": "81d91d4c-d9ca-40eb-a248-359bc5f0257b",
+        "name": "C",
+        "shortName": "C",
+        "order": 6,
+        "i18n": {
+          "fr": {
+            "name": "C",
+            "shortName": "C"
+          }
+        }
+      }
+    },
+    "teamStats": [],
+    "surface": {
+      "venueId": "dc2a5f0b-3e18-4e90-a4fa-c9eaf8325689",
+      "parentId": null,
+      "name": "Glace 1",
+      "fraction": null,
+      "alias": "DUBERGER",
+      "timezone": "America/Toronto",
+      "sports": [
+        "Hockey"
+      ],
+      "type": "Ice",
+      "size": "M",
+      "path": "10462",
+      "externalId": "eeef86cc-cfc1-43c0-a29e-e0cb1747aa8a",
+      "id": 10462,
+      "venue": {
+        "id": "dc2a5f0b-3e18-4e90-a4fa-c9eaf8325689",
+        "name": "Aréna de Duberger",
+        "address": "3050 Bd Central",
+        "city": "Québec",
+        "region": "QC",
+        "postalCode": "G1P 3P1",
+        "country": "Canada",
+        "alias": null,
+        "timezone": "America/Toronto",
+        "externalId": "927f67ad-3515-4872-898a-4ad9450a23ca"
+      }
+    },
+    "office": {
+      "name": "LIGUE HOCKEY MINEUR CAPITALE NATIONALE",
+      "type": "League",
+      "parentId": 6106,
+      "path": "467.2377.6106.6150",
+      "logoId": null,
+      "externalId": "1ef5f007-aa45-654a-a2df-0277dbbceb5f",
+      "timezone": "America/Toronto",
+      "isExternalTeam": false,
+      "color": "#000f46",
+      "slug": "ligue-hockey-mineur-capitale-nationale",
+      "id": 6150,
+      "createdAt": "2024-10-17T15:31:04.411Z",
+      "updatedAt": "2025-10-23T17:50:06.133Z",
+      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1ef5f007-aa45-654a-a2df-0277dbbceb5f/logos/1ef5f007-aa5c-6150-95ef-0277dbbceb5f.png"
+    },
+    "awayTeam": {
+      "name": "CHEVALIERS 2 VBVC",
+      "shortName": "CHEVALIERS 2 VBVC",
+      "division": "Junior",
+      "gender": "Integrated",
+      "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
+      "seasonId": "2025-26",
+      "logoId": null,
+      "externalId": "1f0423c9-00e4-6812-9706-02347ea6fef5",
+      "isPublic": true,
+      "isSanctioned": true,
+      "homeColor": "Bleu",
+      "awayColor": "Blanc",
+      "id": 126537,
+      "createdAt": "2025-06-05T18:40:35.000Z",
+      "updatedAt": "2025-12-04T17:58:24.739Z",
+      "officeId": 6121,
+      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1eb5dab5-7afd-6e06-ba78-06ba8f7ba4e0/logos/1ebc017d-0db5-669c-b98d-06213da53fb2.png"
+    },
+    "homeTeam": {
+      "name": "RICHELIEU QUÉBEC-CENTRE",
+      "shortName": "RICHELIEU",
+      "division": "Junior",
+      "gender": "Integrated",
+      "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
+      "seasonId": "2025-26",
+      "logoId": null,
+      "externalId": "1f09ae6b-63fa-6b72-8b8f-02d448fac679",
+      "isPublic": true,
+      "isSanctioned": true,
+      "homeColor": "JAUNE",
+      "awayColor": "BLANC",
+      "id": 145572,
+      "createdAt": "2025-09-26T14:40:14.000Z",
+      "updatedAt": "2025-11-14T18:46:43.671Z",
+      "officeId": 6128,
+      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1eb5dab7-b59b-6d0e-98c1-06ba8f7ba4e0/logos/1ebc017d-1759-6ca2-9bb7-06d7167eb1a8.png"
+    },
+    "externalProviders": [],
+    "isLive": false
+  },
+  {
+    "number": "7167",
+    "date": "2026-02-05",
+    "startTime": "2026-02-06T00:00:00.000Z",
+    "endTime": "2026-02-06T01:30:00.000Z",
+    "timezone": "America/Toronto",
+    "division": "Junior",
+    "gender": "Integrated",
+    "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
+    "seasonId": "2025-26",
+    "arenaId": 10231,
+    "scheduleId": 183360,
+    "groupId": null,
+    "crossGroupId": null,
+    "crossScheduleId": null,
+    "officeId": 6150,
+    "homeTeamId": 126412,
+    "awayTeamId": 126148,
+    "homeTeamComment": null,
+    "awayTeamComment": null,
+    "status": "Active",
+    "comments": null,
+    "isApproved": false,
+    "isCertified": false,
+    "spectators": null,
+    "actualStartTime": null,
+    "actualEndTime": null,
+    "id": 720459,
+    "category": {
+      "id": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
+      "name": "Junior C",
+      "divisionId": "f184a861-f620-4a73-8f6c-c972c6470e3e",
+      "gender": "Integrated",
+      "classId": "81d91d4c-d9ca-40eb-a248-359bc5f0257b",
+      "order": 306,
+      "i18n": {
+        "fr": {
+          "name": "Junior C"
+        }
+      },
+      "nameFr": "Junior C",
+      "externalId": "1eebee5e-8df0-6ca0-a4a7-062a1ab93798",
+      "division": {
+        "id": "f184a861-f620-4a73-8f6c-c972c6470e3e",
+        "name": "Junior",
+        "shortName": "Junior",
+        "order": 23,
+        "i18n": {
+          "fr": {
+            "name": "Junior",
+            "shortName": "Junior"
+          }
+        }
+      },
+      "class": {
+        "id": "81d91d4c-d9ca-40eb-a248-359bc5f0257b",
+        "name": "C",
+        "shortName": "C",
+        "order": 6,
+        "i18n": {
+          "fr": {
+            "name": "C",
+            "shortName": "C"
+          }
+        }
+      }
+    },
+    "teamStats": [],
+    "surface": {
+      "venueId": "5f7dd494-123a-4135-bd94-b7916923f3bb",
+      "parentId": null,
+      "name": "Glace 1",
+      "fraction": null,
+      "alias": "ARPIDROME",
+      "timezone": "America/Toronto",
+      "sports": [
+        "Hockey"
+      ],
+      "type": "Ice",
+      "size": "M",
+      "path": "10231",
+      "externalId": "5c7cfd5f-1e1e-49e2-a875-d3525842b770",
+      "id": 10231,
+      "venue": {
+        "id": "5f7dd494-123a-4135-bd94-b7916923f3bb",
+        "name": "Arpidrome Charlesbourg",
+        "address": "750 Rue de la Sorbonne",
+        "city": "Québec",
+        "region": "QC",
+        "postalCode": "G1H 1H1",
+        "country": "Canada",
+        "alias": null,
+        "timezone": "America/Toronto",
+        "externalId": "53c43b97-1b3d-4bf8-8800-09fdf6e6a16a"
+      }
+    },
+    "office": {
+      "name": "LIGUE HOCKEY MINEUR CAPITALE NATIONALE",
+      "type": "League",
+      "parentId": 6106,
+      "path": "467.2377.6106.6150",
+      "logoId": null,
+      "externalId": "1ef5f007-aa45-654a-a2df-0277dbbceb5f",
+      "timezone": "America/Toronto",
+      "isExternalTeam": false,
+      "color": "#000f46",
+      "slug": "ligue-hockey-mineur-capitale-nationale",
+      "id": 6150,
+      "createdAt": "2024-10-17T15:31:04.411Z",
+      "updatedAt": "2025-10-23T17:50:06.133Z",
+      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1ef5f007-aa45-654a-a2df-0277dbbceb5f/logos/1ef5f007-aa5c-6150-95ef-0277dbbceb5f.png"
+    },
+    "awayTeam": {
+      "name": "AIGLES CBIO",
+      "shortName": "AIGLES CBIO",
+      "division": "Junior",
+      "gender": "Integrated",
+      "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
+      "seasonId": "2025-26",
+      "logoId": null,
+      "externalId": "1f0423c9-0015-618e-9258-02347ea6fef5",
+      "isPublic": true,
+      "isSanctioned": true,
+      "homeColor": "VERT",
+      "awayColor": "BLANC",
+      "id": 126148,
+      "createdAt": "2025-06-05T18:40:35.000Z",
+      "updatedAt": "2025-11-19T02:56:49.513Z",
+      "officeId": 6125,
+      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/teams/1f0423c9-0015-618e-9258-02347ea6fef5/logos/1f0423c9-0005-6e8c-afd5-02347ea6fef5.jpg"
+    },
+    "homeTeam": {
+      "name": "BUCKS CHARLESBOURG",
+      "shortName": "BUCKS CHARLESBOURG",
+      "division": "Junior",
+      "gender": "Integrated",
+      "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
+      "seasonId": "2025-26",
+      "logoId": null,
+      "externalId": "1f0423c9-08d3-6622-8262-02347ea6fef5",
+      "isPublic": true,
+      "isSanctioned": true,
+      "homeColor": "ROUGE",
+      "awayColor": "BLANC",
+      "id": 126412,
+      "createdAt": "2025-06-05T18:40:35.000Z",
+      "updatedAt": "2026-01-06T20:16:52.993Z",
+      "officeId": 6122,
+      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/teams/1f0423c9-08d3-6622-8262-02347ea6fef5/logos/1f0423c9-08c3-6646-80a1-02347ea6fef5.jpg"
+    },
+    "externalProviders": [],
+    "isLive": false
+  },
+  {
+    "number": "7168",
+    "date": "2026-02-05",
+    "startTime": "2026-02-06T01:30:00.000Z",
+    "endTime": "2026-02-06T03:00:00.000Z",
+    "timezone": "America/Toronto",
+    "division": "Junior",
+    "gender": "Integrated",
+    "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
+    "seasonId": "2025-26",
+    "arenaId": 10231,
+    "scheduleId": 183360,
+    "groupId": null,
+    "crossGroupId": null,
+    "crossScheduleId": null,
+    "officeId": 6150,
+    "homeTeamId": 126413,
+    "awayTeamId": 126550,
+    "homeTeamComment": null,
+    "awayTeamComment": null,
+    "status": "Active",
+    "comments": null,
+    "isApproved": false,
+    "isCertified": false,
+    "spectators": null,
+    "actualStartTime": null,
+    "actualEndTime": null,
+    "id": 720458,
+    "category": {
+      "id": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
+      "name": "Junior C",
+      "divisionId": "f184a861-f620-4a73-8f6c-c972c6470e3e",
+      "gender": "Integrated",
+      "classId": "81d91d4c-d9ca-40eb-a248-359bc5f0257b",
+      "order": 306,
+      "i18n": {
+        "fr": {
+          "name": "Junior C"
+        }
+      },
+      "nameFr": "Junior C",
+      "externalId": "1eebee5e-8df0-6ca0-a4a7-062a1ab93798",
+      "division": {
+        "id": "f184a861-f620-4a73-8f6c-c972c6470e3e",
+        "name": "Junior",
+        "shortName": "Junior",
+        "order": 23,
+        "i18n": {
+          "fr": {
+            "name": "Junior",
+            "shortName": "Junior"
+          }
+        }
+      },
+      "class": {
+        "id": "81d91d4c-d9ca-40eb-a248-359bc5f0257b",
+        "name": "C",
+        "shortName": "C",
+        "order": 6,
+        "i18n": {
+          "fr": {
+            "name": "C",
+            "shortName": "C"
+          }
+        }
+      }
+    },
+    "teamStats": [],
+    "surface": {
+      "venueId": "5f7dd494-123a-4135-bd94-b7916923f3bb",
+      "parentId": null,
+      "name": "Glace 1",
+      "fraction": null,
+      "alias": "ARPIDROME",
+      "timezone": "America/Toronto",
+      "sports": [
+        "Hockey"
+      ],
+      "type": "Ice",
+      "size": "M",
+      "path": "10231",
+      "externalId": "5c7cfd5f-1e1e-49e2-a875-d3525842b770",
+      "id": 10231,
+      "venue": {
+        "id": "5f7dd494-123a-4135-bd94-b7916923f3bb",
+        "name": "Arpidrome Charlesbourg",
+        "address": "750 Rue de la Sorbonne",
+        "city": "Québec",
+        "region": "QC",
+        "postalCode": "G1H 1H1",
+        "country": "Canada",
+        "alias": null,
+        "timezone": "America/Toronto",
+        "externalId": "53c43b97-1b3d-4bf8-8800-09fdf6e6a16a"
+      }
+    },
+    "office": {
+      "name": "LIGUE HOCKEY MINEUR CAPITALE NATIONALE",
+      "type": "League",
+      "parentId": 6106,
+      "path": "467.2377.6106.6150",
+      "logoId": null,
+      "externalId": "1ef5f007-aa45-654a-a2df-0277dbbceb5f",
+      "timezone": "America/Toronto",
+      "isExternalTeam": false,
+      "color": "#000f46",
+      "slug": "ligue-hockey-mineur-capitale-nationale",
+      "id": 6150,
+      "createdAt": "2024-10-17T15:31:04.411Z",
+      "updatedAt": "2025-10-23T17:50:06.133Z",
+      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/organizations/1ef5f007-aa45-654a-a2df-0277dbbceb5f/logos/1ef5f007-aa5c-6150-95ef-0277dbbceb5f.png"
+    },
+    "awayTeam": {
+      "name": "CARIBOUS CHARLESBOURG",
+      "shortName": "CARIBOUS CHARLESBOURG",
+      "division": "Junior",
+      "gender": "Integrated",
+      "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
+      "seasonId": "2025-26",
+      "logoId": null,
+      "externalId": "1f0423c9-0088-6238-989e-02347ea6fef5",
+      "isPublic": true,
+      "isSanctioned": true,
+      "homeColor": "ROUGE",
+      "awayColor": "BLANC",
+      "id": 126550,
+      "createdAt": "2025-06-05T18:40:35.000Z",
+      "updatedAt": "2025-11-04T17:33:29.596Z",
+      "officeId": 6122,
+      "logoUrl": "https://cdn.hcr.spordle.com/teams/1ef21be2-5d57-63d4-8479-06f606e85d2d/logos/1ef21be2-5d44-66e4-9f71-06f606e85d2d.png"
+    },
+    "homeTeam": {
+      "name": "WAPITIS CHARLESBOURG",
+      "shortName": "WAPITIS CHARLESBOURG",
+      "division": "Junior",
+      "gender": "Integrated",
+      "categoryId": "4db0bd5f-6773-4a84-9ff6-661863a5c069",
+      "seasonId": "2025-26",
+      "logoId": null,
+      "externalId": "1f0423c9-08e1-6b8c-9d74-02347ea6fef5",
+      "isPublic": true,
+      "isSanctioned": true,
+      "homeColor": "ROUGE",
+      "awayColor": "BLANC",
+      "id": 126413,
+      "createdAt": "2025-06-05T18:40:35.000Z",
+      "updatedAt": "2026-01-27T14:48:05.536Z",
+      "officeId": 6122,
+      "logoUrl": "https://d1yykh3c16sa22.cloudfront.net/teams/1f0423c9-08e1-6b8c-9d74-02347ea6fef5/logos/1f0423c9-08d3-6924-a13b-02347ea6fef5.jpg"
     },
     "externalProviders": [],
     "isLive": false
