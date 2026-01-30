@@ -879,24 +879,34 @@ def main():
         
         /* Specific column alignments if needed (but user wants all centered) */
         
+        /* Global Overlay Fix */
+        section[data-testid="stAppViewContainer"] > .main {
+            overflow-x: hidden !important;
+        }
+
         /* Mobile Scroll Container */
         .scroll-table-container {
+            /* FORCE WIDTH CONSTRAINT */
             width: 100%;
+            max-width: 100vw;
+            min-width: 0;
+            
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
             
-            /* Prevent scrolling parent when hitting edge */
             overscroll-behavior-x: contain;
-            
-            /* Explicitly handle horizontal pan, allowing browser to handle vertical */
             touch-action: pan-x;
             
             display: block;
             margin-bottom: 1em;
-            border: 1px solid #333; /* Optional visual boundary */
+            
+            /* Isolation */
+            position: relative;
+            z-index: 1;
+            
+            border: 1px solid #333; 
             border-radius: 4px;
             
-            /* Hardware acceleration to reduce repaint jitter */
             transform: translateZ(0);
         }
 
