@@ -1038,59 +1038,9 @@ def main():
     debug_mode = st.sidebar.toggle("🛠️ Mode Debug & Scroll", value=False)
     
     if debug_mode:
-        st.markdown("""
-        <style>
-            /* Visual Debugging Borders */
-            .scroll-table-container { border: 2px solid red !important; }
-            .comparison-grid { border: 2px solid blue !important; }
-            section[data-testid="stAppViewContainer"] { border: 4px solid green !important; }
-            
-            /* Debug Overlay */
-            #debug-overlay {
-                position: fixed;
-                bottom: 10px;
-                right: 10px;
-                background: rgba(0,0,0,0.8);
-                color: lime;
-                padding: 10px;
-                z-index: 999999;
-                font-size: 12px;
-                pointer-events: none;
-                max-width: 200px;
-            }
-        </style>
-        <div id="debug-overlay">
-            Wait for JS...
-        </div>
-        <script>
-            // Simple Scroll Monitor
-            const overlay = document.getElementById('debug-overlay');
-            
-            function updateDebug() {
-                const w = window.innerWidth;
-                const sw = document.body.scrollWidth;
-                const h = window.innerHeight;
-                
-                overlay.innerHTML = `
-                    <b>Window:</b> ${w}x${h}<br>
-                    <b>Body Scroll:</b> ${sw}<br>
-                    <b>Overflow:</b> ${(sw > w) ? 'YES (BAD)' : 'NO (GOOD)'}
-                `;
-            }
-            
-            window.addEventListener('resize', updateDebug);
-            window.addEventListener('scroll', updateDebug);
-            setInterval(updateDebug, 500);
-            
-            // Track element scrolling
-            document.addEventListener('scroll', (e) => {
-                if(e.target != document) {
-                   console.log('Scroll:', e.target);
-                   // Try to add class to overlay?
-                }
-            }, true); // Capture phase
-        </script>
-        """, unsafe_allow_html=True)
+        st.session_state['debug_mode_mobile'] = True
+    else:
+        st.session_state['debug_mode_mobile'] = False
 
     # --- VIEWS ---
     view = st.sidebar.radio("Vue", ["Tableau de bord", "Évolution"], index=0, key="view_mode")
@@ -4033,5 +3983,84 @@ def render_evolution(games, goals, penalties, conn, selected_teams, stats_mode, 
             width="stretch"
         )
 
+
 if __name__ == "__main__":
     main()
+    
+    # --- GLOBAL DEBUG INJECTION (Mobile Scroll Fix) ---
+    if st.session_state.get('debug_mode_mobile', False):
+         st.markdown("""
+        <style>
+            /* Visual Debugging Borders */
+            /* Use extremely high z-index and !important to ensure visibility */
+            .scroll-table-container { 
+                border: 4px solid red !important; 
+                position: relative; /* Ensure border text context */
+            }
+            .scroll-table-container::before {
+                content: "SCROLL CONTAINER";
+                position: absolute;
+                top: 0; left: 0;
+                background: red; color: white;
+                font-size: 10px; padding: 2px;
+            }
+            
+            .comparison-grid { border: 2px solid blue !important; }
+            
+            /* Main App View - Green Border */
+            section[data-testid="stAppViewContainer"] > .main { 
+                border: 4px solid green !important; 
+            }
+            
+            /* Debug Overlay */
+            #debug-overlay {
+                position: fixed;
+                bottom: 10px;
+                right: 10px;
+                width: 220px;
+                background: rgba(0,0,0,0.85);
+                color: #0f0;
+                padding: 10px;
+                z-index: 2147483647; /* Max Z-Index */
+                font-family: monospace;
+                font-size: 11px;
+                pointer-events: none;
+                border: 1px solid #0f0;
+                border-radius: 4px;
+            }
+        </style>
+        <div id="debug-overlay">
+            Init Debug...
+        </div>
+        <script>
+            (function() {
+                const overlay = document.getElementById('debug-overlay');
+                if(!overlay) return;
+                
+                function updateDebug() {
+                    const w = window.innerWidth;
+                    const h = window.innerHeight;
+                    const sw = document.documentElement.scrollWidth; // Use documentElement for global
+                    const bw = document.body.scrollWidth;
+                    
+                    // Check if specific elements are overflowing
+                    const containers = document.querySelectorAll('.scroll-table-container');
+                    let containerInfo = "";
+                    containers.forEach((c, i) => {
+                         containerInfo += `<br>Table[${i}]: ${c.scrollWidth} / ${c.clientWidth}`;
+                    });
+                    
+                    overlay.innerHTML = `
+                        <b>Viewport:</b> ${w}x${h}<br>
+                        <b>Doc Scroll:</b> ${sw} (Body: ${bw})<br>
+                        <b>Overflow Global:</b> ${(sw > w) ? '<span style="color:red">YES</span>' : '<span style="color:lime">NO</span>'}
+                        ${containerInfo}
+                    `;
+                }
+                
+                window.addEventListener('resize', updateDebug);
+                window.addEventListener('scroll', updateDebug);
+                setInterval(updateDebug, 500);
+            })();
+        </script>
+        """, unsafe_allow_html=True)
