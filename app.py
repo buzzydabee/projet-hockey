@@ -472,7 +472,11 @@ def calculate_standings(games, penalties, goals):
     
     # Return empty if needed
     if not stats:
-        return pd.DataFrame(columns=cols_to_show + ['PP', 'PK', 'PP_G', 'PP_Att', 'PK_Att', 'PK_Kills'])
+        empty_cols = cols_to_show + ['PP', 'PK', 'PP_G', 'PP_Att', 'PK_Att', 'PK_Kills']
+        per_period_cols = ['BP P1', 'BP P2', 'BP P3', 'BC P1', 'BC P2', 'BC P3',
+                           '%AN P1', '%AN P2', '%AN P3', '%DN P1', '%DN P2', '%DN P3',
+                           'PUN P1', 'PUN P2', 'PUN P3']
+        return pd.DataFrame(columns=empty_cols + per_period_cols)
 
     df = pd.DataFrame(stats)
     # Sort by PTS desc
@@ -820,7 +824,7 @@ def main():
 
     # --- DATE PARSING ---
     # Convert date strings to datetime objects for filtering
-    games['date_dt'] = games['date'].apply(parse_french_date)
+    games['date_dt'] = pd.to_datetime(games['date'].apply(parse_french_date))
     # Remove invalid dates if any
     games = games.dropna(subset=['date_dt'])
     
@@ -830,6 +834,17 @@ def main():
     else:
         min_date = datetime.now().date()
         max_date = datetime.now().date()
+
+    # Empecher l'erreur Streamlit si min_date == max_date
+    if min_date >= max_date:
+        max_date = min_date + timedelta(days=1)
+        
+    # FIX: La saison n'ira jamais plus loin que le 11 avril 2026
+    limite_saison = datetime(2026, 4, 11).date()
+    if max_date > limite_saison:
+        max_date = limite_saison
+    if min_date >= max_date:
+        min_date = max_date - timedelta(days=1)
 
     # --- CSS HACK FOR COMPACT INSTANCE ---
     st.markdown("""
@@ -1065,8 +1080,9 @@ def main():
     
     # --- FILTER DATA ---
     # Filter Games by Date
-    mask_date = (games['date_dt'].dt.date >= start_date) & (games['date_dt'].dt.date <= end_date)
-    games = games[mask_date]
+    if not games.empty:
+        mask_date = (games['date_dt'].dt.date >= start_date) & (games['date_dt'].dt.date <= end_date)
+        games = games[mask_date]
     
     # FILTER: "Complete" games for Statistics
     # We create a separate DataFrame for stats calculations (Standing, Players, Goalies)
@@ -1211,6 +1227,10 @@ def main():
             # --- 2. PROCESS ---
             if process.returncode == 0:
                 status_proc = st.sidebar.status("Mise à jour de la BD...", expanded=True)
+                
+                try: conn.close()
+                except: pass
+                
                 cmd_proc = [sys.executable, "-u", "process_gamesheets.py"]
                 
                 # ... process setup same as beform ...
@@ -1259,6 +1279,8 @@ def main():
             import subprocess
             import sys
             try:
+                try: conn.close()
+                except: pass
                 # Run Process Script Only (It deletes DB first)
                 result_rebuild = subprocess.run([sys.executable, "process_gamesheets.py"], capture_output=True, text=True)
                 st.sidebar.success("Base de données reconstruite!")
@@ -1278,6 +1300,8 @@ def main():
          import sys
          
          try:
+             try: conn.close()
+             except: pass
              # Use Popen to read output in real-time
              process = subprocess.Popen(
                  [sys.executable, "process_gamesheets.py", "--reset"],
@@ -1520,7 +1544,11 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
          standings.index += 1
     else:
          # Create empty with correct columns to avoid KeyError
-         standings = pd.DataFrame(columns=['Équipe', 'PTS/MJ', 'PTS', 'MJ', 'V', 'D', 'N', 'FJ', 'BP', 'BC', 'DIFF', '%AN', '%DN', 'PUN'])
+         empty_cols = ['Équipe', 'PTS/MJ', 'PTS', 'MJ', 'V', 'D', 'N', 'FJ', 'BP', 'BC', 'DIFF', '%AN', '%DN', 'PUN',
+                       'BP P1', 'BP P2', 'BP P3', 'BC P1', 'BC P2', 'BC P3',
+                       '%AN P1', '%AN P2', '%AN P3', '%DN P1', '%DN P2', '%DN P3',
+                       'PUN P1', 'PUN P2', 'PUN P3']
+         standings = pd.DataFrame(columns=empty_cols)
 
     cols_to_show = ['Équipe', 'PTS/MJ', 'PTS', 'MJ', 'V', 'D', 'N', 'FJ', 'BP', 'BC', 'DIFF', '%AN', '%DN', 'PUN',
                     'BP P1', 'BP P2', 'BP P3', 
@@ -1550,10 +1578,10 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
         orig_cols = [c for c in orig_cols if c != 'PTS/MJ' and c != 'MJ']
         
         # New Request: Add MJ as first stat
-        cols_to_show = ['Équipe', 'MJ'] + norm_cols_ordered + orig_cols + \
-                       ['BP P1', 'BP P2', 'BP P3', 'BC P1', 'BC P2', 'BC P3',
-                        '%AN P1', '%AN P2', '%AN P3', '%DN P1', '%DN P2', '%DN P3',
-                        'PUN P1', 'PUN P2', 'PUN P3']
+        cols_to_show = []
+        for c in (['Équipe', 'MJ'] + norm_cols_ordered + orig_cols):
+             if c not in cols_to_show:
+                 cols_to_show.append(c)
 
     # --- HEATMAP LOGIC ---
     # Define Roots
@@ -1648,22 +1676,22 @@ def render_dashboard(games, goals, penalties, conn, selected_teams, stats_mode, 
                         # Verify source column exists (e.g. 'V', 'D')
                         if c in st_global.columns:
                             st_global[new_c] = st_global.apply(lambda r: r[c]/r['MJ'] if r['MJ'] > 0 else 0, axis=1)
-            # --- STYLING (Applied to Filtered Standings) ---
-            # Center stats columns (Skip Team, Rang)
-            
-            # Convert Index to Column "Rang"
-            standings.index.name = "Rang"
-            standings = standings.reset_index()
-            
-            # Pin "Équipe" by moving it to Index
-            standings = standings.set_index(["Rang", "Équipe"])
-            
-            # Updated Cols Display: (Rang and Equipe are in index, so exclude from data cols)
-            cols_display = [c for c in cols_data if c != 'Équipe']
- 
-            
-            # Define stats_cols for centering (exclude text columns)
-            stats_cols = [c for c in cols_display if c not in ['Rang', 'Équipe']]
+
+    # --- STYLING (Applied to Filtered Standings) ---
+    # Center stats columns (Skip Team, Rang)
+    
+    # Convert Index to Column "Rang"
+    standings.index.name = "Rang"
+    standings = standings.reset_index()
+    
+    # Pin "Équipe" by moving it to Index
+    standings = standings.set_index(["Rang", "Équipe"])
+    
+    # Updated Cols Display: (Rang and Equipe are in index, so exclude from data cols)
+    cols_display = [c for c in cols_data if c != 'Équipe']
+
+    # Define stats_cols for centering (exclude text columns)
+    stats_cols = [c for c in cols_display if c not in ['Rang', 'Équipe']]
             
     # Styling logic removed - replaced by native st.dataframe config above
     
